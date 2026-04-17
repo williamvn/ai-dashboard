@@ -1,64 +1,72 @@
 # Frontend Architecture
 
-Framework: React + Vite + TypeScript
+## Stack
 
-## Core Principles
+- React
+- Vite
+- TypeScript
+- Custom CSS
+- React Query
+- Recharts
 
-- Use component-based architecture
-- Use feature folders by business domain
-- Keep routes/pages thin
-- Keep business logic outside UI components
-- Reuse shared UI primitives
-- Strong typing
+---
+
+## Purpose
+
+Build a clean analytics interface for engineering leaders.
+
+The UI should feel fast, credible, and easy to understand.
 
 ---
 
 ## Folder Structure
 
 src/
-  app/
-  routes/
-  features/
-    dashboard/
-    organizations/
-    simulate/
-    about/
-  components/
-    ui/
-    layout/
-  services/
-  hooks/
-  lib/
+
+- app/
+- routes/
+- features/
+- components/
+- services/
+- hooks/
+- lib/
 
 ---
 
-## Meaning of Folders
-
-### app/
+## app/
 
 Application bootstrap:
 
 - providers
-- router setup
+- router
 - theme
 - root shell
 
-### routes/
+---
 
-Route entry files only.
+## routes/
+
+Thin route entry files only.
 
 Examples:
 
-- /landing
-- /dashboard
-- /simulate
-- /about
+- dashboard
+- simulate
+- about
 
 Routes compose features but contain little logic.
 
-### features/
+---
 
-Business modules.
+## features/
+
+Business domains.
+
+Examples:
+
+- dashboard/
+- organizations/
+- simulate/
 
 Each feature may contain:
 
@@ -67,83 +75,65 @@ Each feature may contain:
 - services/
 - types.ts
 
-Examples:
+---
 
-features/dashboard/
-features/organizations/
-features/simulate/
+## components/
 
-### components/ui/
+Reusable UI.
 
-Reusable primitives:
+### ui/
 
 - Button
 - Card
 - Table
-- Modal
 - Input
+- Tabs
+- Modal
 
-### components/layout/
-
-Shared layouts:
+### layout/
 
 - Sidebar
 - Topbar
 - AppShell
 - PageContainer
 
-### services/
-
-Shared API/http clients.
-
-### hooks/
-
-Reusable generic hooks.
-
-### lib/
-
-Utilities and helpers.
-
 ---
 
 ## Data Fetching
 
-Use TanStack Query (React Query) for server state.
+Use React Query for server state.
 
 Examples:
 
-- dashboard metrics
 - organizations list
-- simulation requests
+- dashboard metrics
+- simulation actions
 
-Do not fetch directly inside components when avoidable.
-
-Prefer hooks such as:
+Prefer feature hooks:
 
 - useOrganizations()
 - useDashboardMetrics()
-- useRunSimulation()
+- useSimulation()
 
 ---
 
-## Component Rules
+## Component Principles
 
-- Keep components focused
-- Split large files
-- Presentational components should receive props
-- Avoid deeply nested state
-- Prefer composition
-
----
-
-## Styling Rules
-
-- Consistent spacing
-- Clean analytics UI
-- Responsive layouts
-- Reuse shared components first
+- keep components focused
+- split large files
+- prefer composition
+- keep business logic outside presentation
+- strong prop typing
 
 ---
+
+## UX Expectations
+
+- obvious navigation
+- readable tables
+- meaningful charts
+- responsive layout
+- strong empty/loading states
 
 ## Anti Patterns
 

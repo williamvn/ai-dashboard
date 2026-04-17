@@ -1,159 +1,130 @@
-# Turborepo starter
+# AI Agent Analytics Dashboard
 
-This Turborepo starter is maintained by the Turborepo core team.
+A take-home project for Zencoder.
 
-## Using this example
+This platform helps engineering leaders understand how AI agents are used across their organisation, how many tokens they consume, what they cost, and whether they create validated value.
 
-Run the following command:
+---
 
-```sh
-npx create-turbo@latest
-```
+## Product Vision
 
-## What's inside?
+Engineering teams increasingly rely on AI tools for development workflows, yet leadership often lacks visibility into:
 
-This Turborepo includes the following packages/apps:
+- real adoption across teams
+- token consumption trends
+- cost efficiency
+- which agents create value
+- productivity signals
+- high spend / low quality usage
 
-### Apps and Packages
+This project explores how an analytics platform could solve that problem.
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+---
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+## Core Features
 
-### Utilities
+### Dashboard
 
-This Turborepo has some additional tools already setup for you:
+Track:
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+- total runs
+- active engineers
+- tokens consumed
+- estimated spend
+- average validation score
+- top agents
+- usage trends
+- cost efficiency
 
-### Build
+### Simulation
 
-To build all apps and packages, run the following command:
+Generate realistic synthetic historical usage across organisations.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+Used for scenario modelling and analytics exploration.
 
-```sh
-cd my-turborepo
-turbo build
-```
+### Organisation Switching
 
-Without global `turbo`, use your package manager:
+Compare usage patterns across multiple seeded organisations.
 
-```sh
-cd my-turborepo
-npx turbo build
-npm dlx turbo build
-npm exec turbo build
-```
+---
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+## Architecture
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+### Monorepo
 
-```sh
-turbo build --filter=docs
-```
+- apps/web → React frontend
+- apps/api → NestJS backend
+- apps/docs → project documentation
+- packages/types → shared contracts
 
-Without global `turbo`:
+### Backend Model
 
-```sh
-npx turbo build --filter=docs
-npm exec turbo build --filter=docs
-npm exec turbo build --filter=docs
-```
+The backend uses in-memory storage and on-write aggregation.
 
-### Develop
+Metrics are updated during writes rather than recomputed during reads.
 
-To develop all apps and packages, run the following command:
+### Frontend Model
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+Feature-oriented React architecture with reusable components and strong typing.
 
-```sh
-cd my-turborepo
-turbo dev
-```
+---
 
-Without global `turbo`, use your package manager:
+## AI-Assisted Workflow
 
-```sh
-cd my-turborepo
-npx turbo dev
-npm exec turbo dev
-npm exec turbo dev
-```
+AI tooling was intentionally used during delivery.
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+Used for:
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+- implementation acceleration
+- scaffolding
+- refactoring
+- UI iteration
+- code review loops
+- alternative solution exploration
 
-```sh
-turbo dev --filter=web
-```
+Human-owned decisions:
 
-Without global `turbo`:
+- product direction
+- architecture
+- tradeoffs
+- UX judgement
+- final quality bar
 
-```sh
-npx turbo dev --filter=web
-npm exec turbo dev --filter=web
-npm exec turbo dev --filter=web
-```
+---
 
-### Remote Caching
+## Why These Choices
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+### In-memory storage
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+Best fit for assignment scope. Keeps focus on product and architecture.
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+### On-write aggregation
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+Reflects real analytics systems and keeps dashboard reads fast.
 
-```sh
-cd my-turborepo
-turbo login
-```
+### Shared types
 
-Without global `turbo`, use your package manager:
+Avoids frontend/backend contract drift.
 
-```sh
-cd my-turborepo
-npx turbo login
-npm exec turbo login
-npm exec turbo login
-```
+### Token-based cost model
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+Makes spend metrics feel realistic and AI-native.
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+---
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+## If Extended Further
 
-```sh
-turbo link
-```
+- persistent storage
+- auth / RBAC
+- real telemetry ingestion
+- anomaly detection
+- forecasting
+- benchmarking
+- team drilldowns
+- budget alerts
 
-Without global `turbo`:
+---
 
-```sh
-npx turbo link
-npm exec turbo link
-npm exec turbo link
-```
+## Run Project
 
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+Install dependencies (`npm install`) and run monorepo apps as normal via Turbo (`npm run dev`).

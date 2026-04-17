@@ -2,16 +2,20 @@
 
 ## Product Purpose
 
-This platform helps organisations understand and simulate the use of AI agents in engineering teams.
+Help engineering leaders understand AI usage, spend, and quality across their teams.
 
-The UI should feel like a modern analytics product used by CTOs, engineering leaders, and decision makers.
+This should feel like a modern analytics SaaS product.
 
 Priorities:
 
 - clarity over decoration
-- useful metrics over flashy visuals
+
+- useful metrics over vanity metrics
+
+- professional tone
+
 - fast navigation
-- professional B2B tone
+
 - data dense but readable
 
 ---
@@ -69,8 +73,8 @@ Examples:
 - total spend
 - spend over time
 - cost by team
+- tokens by agent
 - cost by engineer
-- anomalies
 
 ### Impact
 
@@ -108,12 +112,6 @@ Outputs:
 - projected cost
 - estimated impact
 - charts and comparisons
-
----
-
-## 4. About
-
-Simple page explaining product purpose.
 
 ---
 
