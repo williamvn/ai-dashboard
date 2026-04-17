@@ -3,12 +3,14 @@ export type TaskLevel = 'easy' | 'medium' | 'hard';
 export interface Organization {
   id: string;
   name: string;
+  profilePicUrl: string;
 }
 
 export interface User {
   id: string;
   organizationId: string;
   name: string;
+  profilePicUrl: string;
 }
 
 export interface Agent {

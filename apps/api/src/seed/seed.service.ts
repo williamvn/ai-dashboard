@@ -59,7 +59,11 @@ export class SeedService implements OnModuleInit {
     let userSeq = 1;
 
     for (const def of ORGS) {
-      const org: Organization = { id: def.id, name: def.name };
+      const org: Organization = {
+        id: def.id,
+        name: def.name,
+        profilePicUrl: getOrganizationProfilePicUrl(def.name),
+      };
       this.store.organizations.push(org);
 
       for (const name of def.engineers) {
@@ -67,9 +71,18 @@ export class SeedService implements OnModuleInit {
           id: `user-${userSeq++}`,
           organizationId: def.id,
           name,
+          profilePicUrl: getUserProfilePicUrl(name),
         };
         this.store.users.push(user);
       }
     }
   }
+}
+
+function getUserProfilePicUrl(userName: string): string {
+  return `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${encodeURIComponent(userName)}`;
+}
+
+function getOrganizationProfilePicUrl(organizationName: string): string {
+  return `https://api.dicebear.com/9.x/rings/svg?seed=${encodeURIComponent(organizationName)}`;
 }
