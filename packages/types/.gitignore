@@ -1,0 +1,8 @@
+# Compiled output
+dist/
+
+# Compiled files that should never land alongside source
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+src/**/*.d.ts.map
