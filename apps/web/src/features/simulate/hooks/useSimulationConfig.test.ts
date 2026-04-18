@@ -7,7 +7,7 @@ import { useSimulationConfig } from './useSimulationConfig';
 const AGENTS: Agent[] = [
   makeAgent('agent-refactor'),
   makeAgent('agent-test-gen'),
-  makeAgent('agent-debug'),
+  makeAgent('agent-api-gen'),
 ];
 
 const USERS: User[] = [

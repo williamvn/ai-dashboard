@@ -36,7 +36,7 @@ const RUNS = 200;
 const WINDOW_DAYS = 14;
 const FROM = '2026-01-01';
 const TO = '2026-01-14';
-const AGENTS = ['agent-refactor', 'agent-test-gen', 'agent-debug'] as const;
+const AGENTS = ['agent-refactor', 'agent-test-gen', 'agent-api-gen'] as const;
 const ACCEPTANCE_TARGET = 0.75;
 
 interface Submitted {
@@ -225,7 +225,7 @@ describe('simulation aggregation @scale @integration', () => {
       const easyInputRange: Record<(typeof AGENTS)[number], [number, number]> = {
         'agent-refactor': [500, 2000],
         'agent-test-gen': [300, 900],
-        'agent-debug': [2000, 5000],
+        'agent-api-gen': [500, 1500],
       };
 
       for (const agentId of AGENTS) {
@@ -242,7 +242,7 @@ describe('simulation aggregation @scale @integration', () => {
       const easyOutputRange: Record<(typeof AGENTS)[number], [number, number]> = {
         'agent-refactor': [500, 1500],
         'agent-test-gen': [600, 1400],
-        'agent-debug': [200, 800],
+        'agent-api-gen': [1200, 2800],
       };
 
       for (const agentId of AGENTS) {
@@ -257,8 +257,8 @@ describe('simulation aggregation @scale @integration', () => {
     it('average cost per run is positive and well under the per-run ceiling for easy tasks', () => {
       const avgCostPerRun = seeded.cost.cost.totalCost / RUNS;
       expect(avgCostPerRun).toBeGreaterThan(0);
-      // Sanity ceiling: the most expensive easy agent (agent-debug) caps at
-      // ~0.05/run; 1.00 is a generous 20× margin that cannot flake.
+      // Sanity ceiling: easy-profile runs cap well under $1; this margin is
+      // generous enough to cannot flake on token sampling variance.
       expect(avgCostPerRun).toBeLessThan(1);
     });
   });

@@ -35,20 +35,6 @@ export class AgentsService implements OnModuleInit {
         latency: { easy: 600, medium: 1800, hard: 4200 },
       },
       {
-        // Input-heavy: reads large code context to find bugs
-        id: 'agent-debug',
-        name: 'Debugging',
-        generatesLines: true,
-        inputTokenPrice: 0.000005,
-        outputTokenPrice: 0.000020,
-        tokenProfile: {
-          easy:   { inputMin: 2000,  inputMax: 5000,  outputMin: 200,  outputMax: 800  },
-          medium: { inputMin: 5000,  inputMax: 12000, outputMin: 500,  outputMax: 2000 },
-          hard:   { inputMin: 15000, inputMax: 30000, outputMin: 1500, outputMax: 5000 },
-        },
-        latency: { easy: 1000, medium: 2800, hard: 6500 },
-      },
-      {
         // Output-heavy: generates entire API layers
         id: 'agent-api-gen',
         name: 'API Generation',

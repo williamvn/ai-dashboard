@@ -2,24 +2,39 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import type { Organization, User } from '@repo/types';
 import { StoreService } from '../store/store.service';
 
+/**
+ * Small first/last pools combined deterministically. Avoids hand-listing 150+
+ * engineers for the two large orgs — iterate first names fastest so each
+ * last-name "cohort" contains the full first-name set, yielding unique pairs
+ * up to FIRST_NAMES.length * LAST_NAMES.length (100).
+ */
+const FIRST_NAMES = [
+  'Alice', 'Ben', 'Chloe', 'Diego', 'Ella', 'Finn', 'Grace', 'Hugo', 'Isla', 'Jake',
+];
+const LAST_NAMES = [
+  'Chen', 'Martinez', 'Smith', 'Lee', 'Johnson', 'Kim', 'Davis', 'Wilson', 'Taylor', 'Moore',
+];
+
+function generateEngineers(count: number): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const first = FIRST_NAMES[i % FIRST_NAMES.length];
+    const last = LAST_NAMES[Math.floor(i / FIRST_NAMES.length) % LAST_NAMES.length];
+    out.push(`${first} ${last}`);
+  }
+  return out;
+}
+
 const ORGS: { id: string; name: string; engineers: string[] }[] = [
   {
     id: 'org-1',
     name: 'Acme Engineering',
-    engineers: [
-      'Alice Chen', 'Bob Martinez', 'Carol Smith', 'Dan Lee', 'Eve Johnson',
-      'Frank Brown', 'Grace Kim', 'Hank Davis', 'Iris Wilson', 'Jack Taylor',
-      'Karen Moore', 'Leo Anderson', 'Mia Thomas', 'Ned Jackson', 'Olivia White',
-    ],
+    engineers: generateEngineers(50),
   },
   {
     id: 'org-2',
     name: 'Stellar Labs',
-    engineers: [
-      'Ava Harris', 'Ben Clark', 'Chloe Lewis', 'Diego Robinson', 'Ella Walker',
-      'Finn Hall', 'Gina Allen', 'Hugo Young', 'Isla King', 'Jake Wright',
-      'Lena Scott', 'Marco Green', 'Nina Adams',
-    ],
+    engineers: generateEngineers(100),
   },
   {
     id: 'org-3',

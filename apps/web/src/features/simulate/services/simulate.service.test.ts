@@ -47,7 +47,7 @@ describe('buildEngineerConfigs', () => {
           callsPerDayMax: 30,
           validationRate: 90,
           acceptanceRate: 50,
-          agentIds: ['agent-debug'],
+          agentIds: ['agent-api-gen'],
         },
       ],
     ]);
@@ -60,7 +60,7 @@ describe('buildEngineerConfigs', () => {
       callsPerDayMax: 30,
       validationRate: 0.9,
       acceptanceRate: 0.5,
-      agentIds: ['agent-debug'],
+      agentIds: ['agent-api-gen'],
     });
     // Second engineer still inherits globals.
     expect(second.callsPerDayMin).toBe(5);
