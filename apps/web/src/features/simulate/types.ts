@@ -47,7 +47,6 @@ export interface EngineersState {
   expandedUserId: string | null;
   allUsersSelected: boolean;
   customisedCount: number;
-  estimatedCalls: number;
 }
 
 export interface EngineersActions {

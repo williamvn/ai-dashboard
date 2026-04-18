@@ -20,6 +20,7 @@ export interface UseSimulationConfig {
   globalsActions: GlobalsActions;
   engineers: EngineersState;
   engineersActions: EngineersActions;
+  estimatedCalls: number;
 }
 
 export function useSimulationConfig({
@@ -179,9 +180,8 @@ export function useSimulationConfig({
       expandedUserId,
       allUsersSelected,
       customisedCount: overrides.size,
-      estimatedCalls,
     }),
-    [selectedUserIds, selectedUsers, overrides, expandedUserId, allUsersSelected, estimatedCalls],
+    [selectedUserIds, selectedUsers, overrides, expandedUserId, allUsersSelected],
   );
 
   const engineersActions = useMemo<EngineersActions>(
@@ -189,5 +189,5 @@ export function useSimulationConfig({
     [toggleUser, toggleAllUsers, toggleExpand, setOverride, resetOverride],
   );
 
-  return { globals, allAgentsSelected, globalsActions, engineers, engineersActions };
+  return { globals, allAgentsSelected, globalsActions, engineers, engineersActions, estimatedCalls };
 }

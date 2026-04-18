@@ -81,7 +81,7 @@ export function SimulatePage({ orgId }: SimulatePageProps) {
 
       {!isLoading && (
         <SimulateRunBar
-          estimatedCalls={config.engineers.estimatedCalls}
+          estimatedCalls={config.estimatedCalls}
           running={sim.running}
           progress={sim.progress}
           progressPct={sim.progressPct}
