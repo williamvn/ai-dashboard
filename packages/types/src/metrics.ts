@@ -4,6 +4,12 @@ export interface UsageMetrics {
   totalUsers: number;
   /** Unique users with at least one run inside the window. */
   totalActiveUsers: number;
+  /** Average calls per day over the window (totalCalls / windowDays) */
+  avgCallsPerDay: number;
+  /** Average daily active users over the window */
+  avgDau: number;
+  /** Calls per active user (totalCalls / totalActiveUsers) */
+  callsPerActiveUser: number;
   /** date string (YYYY-MM-DD) → run count */
   callsPerDay: Record<string, number>;
   /** date string (YYYY-MM-DD) → unique active user count */

@@ -27,20 +27,7 @@ export interface DayBucket {
 
 export interface OrgAggregate {
   organizationId: string;
-  totalCalls: number;
-  totalInputTokens: number;
-  totalOutputTokens: number;
-  totalTokens: number;
-  totalCost: number;
-  totalGeneratedLines: number;
-  totalValidated: number;
-  totalAccepted: number;
-  totalRejected: number;
-  totalValidatedLines: number;
-  /** Unique users with at least one run, across all time. */
-  activeUsers: Set<string>;
   days: Record<string, DayBucket>;
-  byAgent: Record<string, AgentStats>;
 }
 
 export interface WindowStats {
@@ -76,16 +63,7 @@ export class StoreService {
     this.runs.set(run.id, run);
 
     const agg = this.getOrCreateAggregate(run.organizationId);
-    const day = toDateKey(run.timestamp);
-    const bucket = this.getOrCreateDayBucket(agg, day);
-
-    agg.totalCalls++;
-    agg.totalInputTokens += run.inputTokens;
-    agg.totalOutputTokens += run.outputTokens;
-    agg.totalTokens += run.totalTokens;
-    agg.totalCost += run.cost;
-    agg.activeUsers.add(run.userId);
-    if (run.generatedLines !== undefined) agg.totalGeneratedLines += run.generatedLines;
+    const bucket = this.getOrCreateDayBucket(agg, toDateKey(run.timestamp));
 
     bucket.calls++;
     bucket.inputTokens += run.inputTokens;
@@ -95,7 +73,6 @@ export class StoreService {
     bucket.activeUsers.add(run.userId);
     if (run.generatedLines !== undefined) bucket.generatedLines += run.generatedLines;
 
-    incrementAgentStats(agg.byAgent, run);
     incrementAgentStats(bucket.byAgent, run);
   }
 
@@ -105,20 +82,8 @@ export class StoreService {
     const agg = this.aggregates.get(run.organizationId);
     if (!agg) return;
 
-    const lines = event.validatedLines ?? 0;
-
-    agg.totalValidated++;
-    if (event.accepted) {
-      agg.totalAccepted++;
-      agg.totalValidatedLines += lines;
-    } else {
-      agg.totalRejected++;
-    }
-
-    applyValidationToAgentStats(agg.byAgent, run.agentId, event, lines);
-
     const bucket = agg.days[toDateKey(run.timestamp)];
-    if (bucket) applyValidationToAgentStats(bucket.byAgent, run.agentId, event, lines);
+    if (bucket) applyValidationToAgentStats(bucket.byAgent, run.agentId, event, event.validatedLines ?? 0);
   }
 
   // ---------------------------------------------------------------------------
@@ -135,26 +100,7 @@ export class StoreService {
   }
 
   getOrgWindowStats(orgId: string, from?: string, to?: string): WindowStats | undefined {
-    const agg = this.aggregates.get(orgId);
-    if (!agg) return undefined;
-
-    if (!from && !to) {
-      return {
-        totalCalls: agg.totalCalls,
-        totalInputTokens: agg.totalInputTokens,
-        totalOutputTokens: agg.totalOutputTokens,
-        totalTokens: agg.totalTokens,
-        totalCost: agg.totalCost,
-        totalGeneratedLines: agg.totalGeneratedLines,
-        totalValidated: agg.totalValidated,
-        totalAccepted: agg.totalAccepted,
-        totalRejected: agg.totalRejected,
-        totalValidatedLines: agg.totalValidatedLines,
-        activeUsers: agg.activeUsers,
-        byAgent: agg.byAgent,
-      };
-    }
-
+    if (!this.aggregates.has(orgId)) return undefined;
     return sumDaysToWindowStats(this.getOrgDays(orgId, from, to));
   }
 
@@ -209,22 +155,7 @@ export class StoreService {
   private getOrCreateAggregate(organizationId: string): OrgAggregate {
     let agg = this.aggregates.get(organizationId);
     if (!agg) {
-      agg = {
-        organizationId,
-        totalCalls: 0,
-        totalInputTokens: 0,
-        totalOutputTokens: 0,
-        totalTokens: 0,
-        totalCost: 0,
-        totalGeneratedLines: 0,
-        totalValidated: 0,
-        totalAccepted: 0,
-        totalRejected: 0,
-        totalValidatedLines: 0,
-        activeUsers: new Set(),
-        days: {},
-        byAgent: {},
-      };
+      agg = { organizationId, days: {} };
       this.aggregates.set(organizationId, agg);
     }
     return agg;

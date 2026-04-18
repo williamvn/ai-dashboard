@@ -1,40 +1,23 @@
 import type { UsageMetrics } from '@repo/types';
+import { formatDecimal, formatNumber } from '../../../lib/format';
 
 interface UsageKpisProps {
   usage: UsageMetrics;
   windowDays: number;
 }
 
-function formatNumber(n: number): string {
-  return Math.round(n).toLocaleString();
-}
-
-function formatDecimal(n: number, digits = 1): string {
-  return n.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
-}
-
 export function UsageKpis({ usage, windowDays }: UsageKpisProps) {
-  const avgCallsPerDay = windowDays > 0 ? usage.totalCalls / windowDays : 0;
-
-  const totalDau = Object.values(usage.dauPerDay).reduce((sum, v) => sum + v, 0);
-  const avgDau = windowDays > 0 ? totalDau / windowDays : 0;
-
-  const callsPerActiveUser =
-    usage.totalActiveUsers > 0 ? usage.totalCalls / usage.totalActiveUsers : 0;
-
-  const adoption = usage.adoptionPercentage;
-
   return (
     <div className="usage-kpis">
       <Kpi label="Total Calls" value={formatNumber(usage.totalCalls)} />
       <Kpi
         label="Avg Calls / Day"
-        value={formatDecimal(avgCallsPerDay)}
+        value={formatDecimal(usage.avgCallsPerDay)}
         hint={`over ${windowDays} days`}
       />
       <Kpi
         label="Calls Per Active User"
-        value={formatDecimal(callsPerActiveUser)}
+        value={formatDecimal(usage.callsPerActiveUser)}
         hint={`${usage.totalActiveUsers} active`}
       />
       <Kpi
@@ -42,10 +25,10 @@ export function UsageKpis({ usage, windowDays }: UsageKpisProps) {
         value={formatNumber(usage.totalUsers)}
         hint={`${usage.totalActiveUsers} active in window`}
       />
-      <Kpi label="Avg DAU" value={formatDecimal(avgDau)} hint={`over ${windowDays} days`} />
+      <Kpi label="Avg DAU" value={formatDecimal(usage.avgDau)} hint={`over ${windowDays} days`} />
       <Kpi
         label="Adoption Rate"
-        value={`${formatDecimal(adoption)}%`}
+        value={`${formatDecimal(usage.adoptionPercentage)}%`}
         hint="avg DAU / total users"
       />
     </div>

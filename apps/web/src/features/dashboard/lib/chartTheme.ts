@@ -3,31 +3,48 @@
 
 import type { Agent } from '@repo/types';
 
+// Reds are intentionally excluded — reserved for --danger-* (stop buttons, errors).
 export const AGENT_PALETTE = [
   '#818cf8', // indigo-400
   '#22d3ee', // cyan-400
   '#f59e0b', // amber-500
   '#f472b6', // pink-400
   '#4ade80', // green-400
-  '#f87171', // red-400
-  '#a78bfa', // violet-400
+  '#a3e635', // lime-400
+  '#fb923c', // orange-400
   '#2dd4bf', // teal-400
 ];
 
-export function colorForIndex(i: number): string {
-  return AGENT_PALETTE[i % AGENT_PALETTE.length]!;
+/** djb2 hash — stable across reorderings, used as the preferred palette slot. */
+function hashToSlot(id: string, slots: number): number {
+  let h = 5381;
+  for (let i = 0; i < id.length; i++) h = ((h << 5) + h + id.charCodeAt(i)) | 0;
+  return Math.abs(h) % slots;
 }
 
 /**
- * Map each agent to a stable palette color based on its position in the canonical
- * agents list. Both the per-agent-over-time chart and the most-used-agents bar chart
- * read from this map so the same agent always wears the same color.
+ * Stable, collision-free while |agents| ≤ |palette|. Each agent is assigned its
+ * hashed slot; if that slot is already taken, linear-probe to the next free one.
+ * Once the palette is exhausted, later agents simply fall back to the hashed slot
+ * and accept collisions. Agents are processed in a stable order (sorted by id) so
+ * the assignment doesn't depend on the incoming array order.
  */
 export function buildAgentColorMap(agents: Agent[]): Record<string, string> {
+  const slots = AGENT_PALETTE.length;
+  const ordered = [...agents].sort((a, b) => a.id.localeCompare(b.id));
+  const taken = new Set<number>();
   const map: Record<string, string> = {};
-  agents.forEach((a, i) => {
-    map[a.id] = colorForIndex(i);
-  });
+
+  for (const a of ordered) {
+    const preferred = hashToSlot(a.id, slots);
+    let slot = preferred;
+    if (taken.size < slots) {
+      while (taken.has(slot)) slot = (slot + 1) % slots;
+      taken.add(slot);
+    }
+    map[a.id] = AGENT_PALETTE[slot]!;
+  }
+
   return map;
 }
 
