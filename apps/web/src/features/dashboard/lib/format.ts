@@ -35,3 +35,13 @@ export function formatLatency(ms: number): string {
   if (ms < 1000) return `${Math.round(ms)} ms`;
   return `${(ms / 1000).toFixed(1)} s`;
 }
+
+/**
+ * Percent formatting for 0–1 ratios. Axis ticks want integer precision; KPI
+ * callouts want one decimal. Guards NaN (0/0 divisions) so empty windows render
+ * as "0.0%" instead of "NaN%".
+ */
+export function formatPercent(ratio: number, digits = 1): string {
+  if (!Number.isFinite(ratio)) return '0%';
+  return `${(ratio * 100).toFixed(digits)}%`;
+}

@@ -31,10 +31,17 @@ export interface AgentStats {
   cost: number;
   inputCost: number;
   outputCost: number;
-  generatedLines: number;
   accepted: number;
   rejected: number;
   validatedLines: number;
+  /** Cost (USD) of runs that were accepted — powers costPerAcceptedRun. */
+  acceptedCost: number;
+  /** Cost (USD) of runs that were rejected — powers costPerRejectedRun (waste signal). */
+  rejectedCost: number;
+  /** Total tokens on runs that were accepted — powers tokensPerAcceptedRun. */
+  acceptedTokens: number;
+  /** Generated lines on runs that were accepted — denominator for acceptedLineRatio. */
+  acceptedGeneratedLines: number;
   latencySum: number;
   latencyCount: number;
   latencyHistogram: number[];
@@ -56,7 +63,6 @@ export interface DayBucket {
   cost: number;
   inputCost: number;
   outputCost: number;
-  generatedLines: number;
   activeUsers: Set<string>;
   byAgent: Record<string, AgentStats>;
   byUser: Record<string, UserStats>;
@@ -77,11 +83,14 @@ export interface WindowStats {
   totalCost: number;
   totalInputCost: number;
   totalOutputCost: number;
-  totalGeneratedLines: number;
   totalValidated: number;
   totalAccepted: number;
   totalRejected: number;
   totalValidatedLines: number;
+  totalAcceptedCost: number;
+  totalRejectedCost: number;
+  totalAcceptedTokens: number;
+  totalAcceptedGeneratedLines: number;
   /** Unique users with at least one run inside the window. */
   activeUsers: Set<string>;
   byAgent: Record<string, AgentStats>;
@@ -118,7 +127,6 @@ export class StoreService {
     bucket.inputCost += run.inputCost;
     bucket.outputCost += run.outputCost;
     bucket.activeUsers.add(run.userId);
-    if (run.generatedLines !== undefined) bucket.generatedLines += run.generatedLines;
 
     incrementAgentStats(bucket.byAgent, run);
     incrementUserStats(bucket.byUser, run);
@@ -134,7 +142,7 @@ export class StoreService {
     if (!agg) return;
 
     const bucket = agg.days[toDateKey(run.timestamp)];
-    if (bucket) applyValidationToAgentStats(bucket.byAgent, run.agentId, event, event.validatedLines ?? 0);
+    if (bucket) applyValidationToAgentStats(bucket.byAgent, run, event);
   }
 
   // ---------------------------------------------------------------------------
@@ -226,7 +234,6 @@ export class StoreService {
         cost: 0,
         inputCost: 0,
         outputCost: 0,
-        generatedLines: 0,
         activeUsers: new Set(),
         byAgent: {},
         byUser: {},
@@ -253,10 +260,13 @@ function emptyAgentStats(): AgentStats {
     cost: 0,
     inputCost: 0,
     outputCost: 0,
-    generatedLines: 0,
     accepted: 0,
     rejected: 0,
     validatedLines: 0,
+    acceptedCost: 0,
+    rejectedCost: 0,
+    acceptedTokens: 0,
+    acceptedGeneratedLines: 0,
     latencySum: 0,
     latencyCount: 0,
     latencyHistogram: newLatencyHistogram(),
@@ -280,7 +290,6 @@ function incrementAgentStats(map: Record<string, AgentStats>, run: AgentRun): vo
   s.latencySum += run.latency;
   s.latencyCount++;
   s.latencyHistogram[latencyBucketIndex(run.latency)]++;
-  if (run.generatedLines !== undefined) s.generatedLines += run.generatedLines;
 }
 
 function incrementUserStats(map: Record<string, UserStats>, run: AgentRun): void {
@@ -294,17 +303,20 @@ function incrementUserStats(map: Record<string, UserStats>, run: AgentRun): void
 
 function applyValidationToAgentStats(
   map: Record<string, AgentStats>,
-  agentId: string,
+  run: AgentRun,
   event: ValidationEvent,
-  lines: number,
 ): void {
-  if (!map[agentId]) map[agentId] = emptyAgentStats();
-  const s = map[agentId];
+  if (!map[run.agentId]) map[run.agentId] = emptyAgentStats();
+  const s = map[run.agentId];
   if (event.accepted) {
     s.accepted++;
-    s.validatedLines += lines;
+    s.validatedLines += event.validatedLines ?? 0;
+    s.acceptedCost += run.cost;
+    s.acceptedTokens += run.totalTokens;
+    s.acceptedGeneratedLines += run.generatedLines ?? 0;
   } else {
     s.rejected++;
+    s.rejectedCost += run.cost;
   }
 }
 
@@ -319,11 +331,14 @@ function sumDaysToWindowStats(days: DayBucket[]): WindowStats {
   let totalCost = 0;
   let totalInputCost = 0;
   let totalOutputCost = 0;
-  let totalGeneratedLines = 0;
   let totalValidated = 0;
   let totalAccepted = 0;
   let totalRejected = 0;
   let totalValidatedLines = 0;
+  let totalAcceptedCost = 0;
+  let totalRejectedCost = 0;
+  let totalAcceptedTokens = 0;
+  let totalAcceptedGeneratedLines = 0;
 
   for (const bucket of days) {
     totalCalls += bucket.calls;
@@ -333,7 +348,6 @@ function sumDaysToWindowStats(days: DayBucket[]): WindowStats {
     totalCost += bucket.cost;
     totalInputCost += bucket.inputCost;
     totalOutputCost += bucket.outputCost;
-    totalGeneratedLines += bucket.generatedLines;
     for (const u of bucket.activeUsers) activeUsers.add(u);
 
     for (const [agentId, s] of Object.entries(bucket.byAgent)) {
@@ -346,10 +360,12 @@ function sumDaysToWindowStats(days: DayBucket[]): WindowStats {
       t.cost += s.cost;
       t.inputCost += s.inputCost;
       t.outputCost += s.outputCost;
-      t.generatedLines += s.generatedLines;
       t.accepted += s.accepted;
       t.rejected += s.rejected;
       t.validatedLines += s.validatedLines;
+      t.acceptedCost += s.acceptedCost;
+      t.acceptedTokens += s.acceptedTokens;
+      t.acceptedGeneratedLines += s.acceptedGeneratedLines;
       t.latencySum += s.latencySum;
       t.latencyCount += s.latencyCount;
       for (let i = 0; i < LATENCY_BUCKET_COUNT; i++) {
@@ -359,6 +375,10 @@ function sumDaysToWindowStats(days: DayBucket[]): WindowStats {
       totalAccepted += s.accepted;
       totalRejected += s.rejected;
       totalValidatedLines += s.validatedLines;
+      totalAcceptedCost += s.acceptedCost;
+      totalRejectedCost += s.rejectedCost;
+      totalAcceptedTokens += s.acceptedTokens;
+      totalAcceptedGeneratedLines += s.acceptedGeneratedLines;
     }
 
     for (const [userId, s] of Object.entries(bucket.byUser)) {
@@ -381,11 +401,14 @@ function sumDaysToWindowStats(days: DayBucket[]): WindowStats {
     totalCost,
     totalInputCost,
     totalOutputCost,
-    totalGeneratedLines,
     totalValidated,
     totalAccepted,
     totalRejected,
     totalValidatedLines,
+    totalAcceptedCost,
+    totalRejectedCost,
+    totalAcceptedTokens,
+    totalAcceptedGeneratedLines,
     activeUsers,
     byAgent,
     byUser,

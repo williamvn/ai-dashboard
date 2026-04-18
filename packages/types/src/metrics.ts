@@ -108,18 +108,72 @@ export interface UserCostRanking {
   totalTokens: number;
 }
 
-export interface ValidationMetrics {
-  /** % of runs that received a ValidationEvent (0–1) */
-  validationRate: number;
-  /** % of validated runs where accepted = true (0–1) */
-  acceptanceRate: number;
+/**
+ * Impact metrics — the ROI and output-quality view.
+ *
+ * Anchored on ValidationEvent: every metric either describes the acceptance
+ * signal directly (rates, counts) or restricts to accepted runs (cost/tokens
+ * per accepted run, lines kept). Read rates as 0–1; the UI formats to percent.
+ */
+export interface ImpactMetrics {
+  /** Total runs in the window — denominator for validationRate. */
+  totalCalls: number;
+  /** Runs that received a ValidationEvent (accepted + rejected). */
   totalValidated: number;
   totalAccepted: number;
   totalRejected: number;
-  totalGeneratedLines: number;
+  /** totalValidated / totalCalls (0–1) */
+  validationRate: number;
+  /** totalAccepted / totalValidated (0–1) */
+  acceptanceRate: number;
+
   totalValidatedLines: number;
-  /** agentId → acceptance rate (0–1) */
+  /** Generated lines on accepted runs — denominator for acceptedLineRatio. */
+  acceptedGeneratedLines: number;
+  /** totalValidatedLines / totalAccepted */
+  avgLinesPerAcceptedRun: number;
+  /** totalValidatedLines / acceptedGeneratedLines (0–1) — share of generated code kept on acceptance. */
+  acceptedLineRatio: number;
+
+  totalAcceptedCost: number;
+  totalRejectedCost: number;
+  /** totalAcceptedCost / totalAccepted (USD) — headline ROI KPI. */
+  costPerAcceptedRun: number;
+  /** totalRejectedCost / totalRejected (USD) — waste signal per rejected output. */
+  costPerRejectedRun: number;
+  /** totalAcceptedTokens / totalAccepted */
+  tokensPerAcceptedRun: number;
+
+  /** agentId → counts / rates / sums */
+  acceptedByAgent: Record<string, number>;
+  rejectedByAgent: Record<string, number>;
   acceptanceRateByAgent: Record<string, number>;
+  /** agentId → generated lines restricted to accepted runs — pairs with validatedLinesByAgent for apples-to-apples "generated vs accepted" comparisons. */
+  acceptedGeneratedLinesByAgent: Record<string, number>;
+  validatedLinesByAgent: Record<string, number>;
+  costPerAcceptedRunByAgent: Record<string, number>;
+  tokensPerAcceptedRunByAgent: Record<string, number>;
+
+  /** date (YYYY-MM-DD) → count / ratio / sum */
+  acceptedPerDay: Record<string, number>;
+  rejectedPerDay: Record<string, number>;
+  /** date → accepted / (accepted + rejected) on that day (0–1) */
+  acceptanceRatePerDay: Record<string, number>;
+  acceptedLinesPerDay: Record<string, number>;
+  /** agentId → date → accepted lines — powers the stacked-area hero chart. */
+  acceptedLinesByAgentPerDay: Record<string, Record<string, number>>;
+}
+
+/**
+ * Composite response for the impact analytics endpoint. Bundles the impact
+ * metrics with per-agent call counts so the agent leaderboard can render
+ * without a second request.
+ */
+export interface ImpactAnalytics {
+  windowDays: number;
+  impact: ImpactMetrics;
+  /** agentId → total calls in window — powers the AgentImpactTable. */
+  callsPerAgent: Record<string, number>;
 }
 
 /**

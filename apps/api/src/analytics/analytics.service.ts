@@ -3,6 +3,8 @@ import type {
   AgentLatencyStats,
   CostAnalytics,
   CostMetrics,
+  ImpactAnalytics,
+  ImpactMetrics,
   LatencyMetrics,
   TokenMetrics,
   UsageMetrics,
@@ -53,6 +55,15 @@ export class AnalyticsService {
       tokens: buildTokens(stats, days),
       latency: buildLatency(stats),
       userRanking: buildUserRanking(stats, (id) => this.store.findUserById(id)),
+      callsPerAgent: buildCallsPerAgent(stats),
+    };
+  }
+
+  getImpactAnalytics(query: AnalyticsQueryDto): ImpactAnalytics {
+    const { stats, days, windowDays } = this.resolveWindow(query);
+    return {
+      windowDays,
+      impact: buildImpact(stats, days),
       callsPerAgent: buildCallsPerAgent(stats),
     };
   }
@@ -313,6 +324,92 @@ function histogramP95(histogram: number[], count: number): number | null {
   return histogram.length * LATENCY_BUCKET_MS;
 }
 
+function buildImpact(stats: WindowStats, days: DayBucket[]): ImpactMetrics {
+  const acceptedByAgent: Record<string, number> = {};
+  const rejectedByAgent: Record<string, number> = {};
+  const acceptanceRateByAgent: Record<string, number> = {};
+  const acceptedGeneratedLinesByAgent: Record<string, number> = {};
+  const validatedLinesByAgent: Record<string, number> = {};
+  const costPerAcceptedRunByAgent: Record<string, number> = {};
+  const tokensPerAcceptedRunByAgent: Record<string, number> = {};
+
+  for (const [agentId, s] of Object.entries(stats.byAgent)) {
+    const validated = s.accepted + s.rejected;
+    acceptedByAgent[agentId] = s.accepted;
+    rejectedByAgent[agentId] = s.rejected;
+    acceptanceRateByAgent[agentId] = validated > 0 ? s.accepted / validated : 0;
+    acceptedGeneratedLinesByAgent[agentId] = s.acceptedGeneratedLines;
+    validatedLinesByAgent[agentId] = s.validatedLines;
+    costPerAcceptedRunByAgent[agentId] = s.accepted > 0 ? s.acceptedCost / s.accepted : 0;
+    tokensPerAcceptedRunByAgent[agentId] = s.accepted > 0 ? s.acceptedTokens / s.accepted : 0;
+  }
+
+  const acceptedPerDay: Record<string, number> = {};
+  const rejectedPerDay: Record<string, number> = {};
+  const acceptanceRatePerDay: Record<string, number> = {};
+  const acceptedLinesPerDay: Record<string, number> = {};
+  const acceptedLinesByAgentPerDay: Record<string, Record<string, number>> = {};
+
+  for (const bucket of days) {
+    let dayAccepted = 0;
+    let dayRejected = 0;
+    let dayAcceptedLines = 0;
+
+    for (const [agentId, s] of Object.entries(bucket.byAgent)) {
+      dayAccepted += s.accepted;
+      dayRejected += s.rejected;
+      dayAcceptedLines += s.validatedLines;
+      if (s.validatedLines > 0) {
+        if (!acceptedLinesByAgentPerDay[agentId]) acceptedLinesByAgentPerDay[agentId] = {};
+        acceptedLinesByAgentPerDay[agentId][bucket.date] = s.validatedLines;
+      }
+    }
+
+    const dayValidated = dayAccepted + dayRejected;
+    acceptedPerDay[bucket.date] = dayAccepted;
+    rejectedPerDay[bucket.date] = dayRejected;
+    acceptanceRatePerDay[bucket.date] = dayValidated > 0 ? dayAccepted / dayValidated : 0;
+    acceptedLinesPerDay[bucket.date] = dayAcceptedLines;
+  }
+
+  return {
+    totalCalls: stats.totalCalls,
+    totalValidated: stats.totalValidated,
+    totalAccepted: stats.totalAccepted,
+    totalRejected: stats.totalRejected,
+    validationRate: stats.totalCalls > 0 ? stats.totalValidated / stats.totalCalls : 0,
+    acceptanceRate: stats.totalValidated > 0 ? stats.totalAccepted / stats.totalValidated : 0,
+
+    totalValidatedLines: stats.totalValidatedLines,
+    acceptedGeneratedLines: stats.totalAcceptedGeneratedLines,
+    avgLinesPerAcceptedRun: stats.totalAccepted > 0 ? stats.totalValidatedLines / stats.totalAccepted : 0,
+    acceptedLineRatio:
+      stats.totalAcceptedGeneratedLines > 0
+        ? stats.totalValidatedLines / stats.totalAcceptedGeneratedLines
+        : 0,
+
+    totalAcceptedCost: stats.totalAcceptedCost,
+    totalRejectedCost: stats.totalRejectedCost,
+    costPerAcceptedRun: stats.totalAccepted > 0 ? stats.totalAcceptedCost / stats.totalAccepted : 0,
+    costPerRejectedRun: stats.totalRejected > 0 ? stats.totalRejectedCost / stats.totalRejected : 0,
+    tokensPerAcceptedRun: stats.totalAccepted > 0 ? stats.totalAcceptedTokens / stats.totalAccepted : 0,
+
+    acceptedByAgent,
+    rejectedByAgent,
+    acceptanceRateByAgent,
+    acceptedGeneratedLinesByAgent,
+    validatedLinesByAgent,
+    costPerAcceptedRunByAgent,
+    tokensPerAcceptedRunByAgent,
+
+    acceptedPerDay,
+    rejectedPerDay,
+    acceptanceRatePerDay,
+    acceptedLinesPerDay,
+    acceptedLinesByAgentPerDay,
+  };
+}
+
 function emptyWindowStats(): WindowStats {
   return {
     totalCalls: 0,
@@ -322,11 +419,14 @@ function emptyWindowStats(): WindowStats {
     totalCost: 0,
     totalInputCost: 0,
     totalOutputCost: 0,
-    totalGeneratedLines: 0,
     totalValidated: 0,
     totalAccepted: 0,
     totalRejected: 0,
     totalValidatedLines: 0,
+    totalAcceptedCost: 0,
+    totalRejectedCost: 0,
+    totalAcceptedTokens: 0,
+    totalAcceptedGeneratedLines: 0,
     activeUsers: new Set<string>(),
     byAgent: {},
     byUser: {},

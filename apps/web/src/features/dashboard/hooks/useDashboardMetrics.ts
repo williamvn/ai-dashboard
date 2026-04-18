@@ -2,6 +2,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { AnalyticsQuery, UserRankingQuery } from '@repo/types';
 import {
   fetchCostAnalytics,
+  fetchImpactAnalytics,
   fetchUsageMetrics,
   fetchUserRanking,
 } from '../services/analytics.service';
@@ -20,6 +21,14 @@ export function useCostAnalytics(query: AnalyticsQuery) {
   return useQuery({
     queryKey: ['analytics', 'cost', query.organizationId, query.from, query.to] as const,
     queryFn: () => fetchCostAnalytics(query),
+    staleTime: STALE_MS,
+  });
+}
+
+export function useImpactAnalytics(query: AnalyticsQuery) {
+  return useQuery({
+    queryKey: ['analytics', 'impact', query.organizationId, query.from, query.to] as const,
+    queryFn: () => fetchImpactAnalytics(query),
     staleTime: STALE_MS,
   });
 }

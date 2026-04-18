@@ -1,5 +1,5 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import type { CostAnalytics, UsageMetrics, UserUsageRanking } from '@repo/types';
+import type { CostAnalytics, ImpactAnalytics, UsageMetrics, UserUsageRanking } from '@repo/types';
 import { AnalyticsQueryDto } from './dto/analytics-query.dto';
 import { UserRankingQueryDto } from './dto/user-ranking-query.dto';
 import { AnalyticsService } from './analytics.service';
@@ -28,5 +28,10 @@ export class AnalyticsController {
   @Get('cost')
   getCostAnalytics(@Query() query: AnalyticsQueryDto): CostAnalytics {
     return this.analytics.getCostAnalytics(query);
+  }
+
+  @Get('impact')
+  getImpactAnalytics(@Query() query: AnalyticsQueryDto): ImpactAnalytics {
+    return this.analytics.getImpactAnalytics(query);
   }
 }

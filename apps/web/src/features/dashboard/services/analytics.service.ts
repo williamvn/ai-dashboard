@@ -1,6 +1,7 @@
 import type {
   AnalyticsQuery,
   CostAnalytics,
+  ImpactAnalytics,
   UsageMetrics,
   UserRankingQuery,
   UserUsageRanking,
@@ -21,6 +22,10 @@ export function fetchUsageMetrics(query: AnalyticsQuery): Promise<UsageMetrics> 
 
 export function fetchCostAnalytics(query: AnalyticsQuery): Promise<CostAnalytics> {
   return api.get<CostAnalytics>(`/analytics/cost?${toQueryString(query)}`);
+}
+
+export function fetchImpactAnalytics(query: AnalyticsQuery): Promise<ImpactAnalytics> {
+  return api.get<ImpactAnalytics>(`/analytics/impact?${toQueryString(query)}`);
 }
 
 export function fetchUserRanking(query: UserRankingQuery): Promise<UserUsageRanking[]> {

@@ -1,0 +1,188 @@
+/* ─── Impact section layout ──────────────────────────────────────────── */
+.impact-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ─── KPIs ─────────────────────────────────────────────────────────────── */
+.impact-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 1200px) {
+  .impact-kpis { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .impact-kpis { grid-template-columns: repeat(2, 1fr); }
+}
+
+.impact-kpi {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 84px;
+}
+
+.impact-kpi-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.impact-kpi-value {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.impact-kpi-hint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* Surfaces when validation coverage drops below VALIDATION_RATE_WARNING —
+   tells viewers the impact numbers above are based on too few reviews. */
+.impact-kpi-value--danger {
+  color: var(--danger-light);
+}
+
+.impact-kpi-hint--danger {
+  color: var(--danger-light);
+  opacity: 0.8;
+}
+
+/* ─── Chart rows ──────────────────────────────────────────────────────── */
+.impact-chart-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .impact-chart-row { grid-template-columns: 1fr; }
+}
+
+.impact-chart-row-split {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .impact-chart-row-split { grid-template-columns: 1fr; }
+}
+
+/* ─── Agent impact leaderboard ────────────────────────────────────────── */
+.agent-impact-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.agent-impact-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.agent-impact-table th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  white-space: nowrap;
+}
+
+.agent-impact-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.agent-impact-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.agent-impact-table tbody tr:hover {
+  background: var(--bg-elevated);
+}
+
+.agent-impact-table .rank-col {
+  width: 40px;
+  color: var(--text-tertiary);
+  text-align: right;
+}
+
+.agent-impact-table .agent-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 160px;
+}
+
+.agent-impact-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.agent-impact-name {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.agent-impact-sort {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.agent-impact-sort:hover {
+  color: var(--text-secondary);
+}
+
+.agent-impact-sort.is-active {
+  color: var(--text-primary);
+}
+
+.agent-impact-sort-arrow {
+  font-size: 9px;
+  line-height: 1;
+}
+
+.agent-impact-muted {
+  color: var(--text-tertiary);
+}
+
+/* Accent for the acceptance-rate cell — the table's reason for existing. */
+.agent-impact-rate {
+  font-weight: 600;
+}
