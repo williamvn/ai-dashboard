@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchAgents } from '../services/agents.service';
+import { fetchAgents } from '@/services/agents.service';
 
 export function useAgents() {
   return useQuery({

@@ -37,6 +37,8 @@ export interface OrgAggregate {
   totalAccepted: number;
   totalRejected: number;
   totalValidatedLines: number;
+  /** Unique users with at least one run, across all time. */
+  activeUsers: Set<string>;
   days: Record<string, DayBucket>;
   byAgent: Record<string, AgentStats>;
 }
@@ -52,6 +54,8 @@ export interface WindowStats {
   totalAccepted: number;
   totalRejected: number;
   totalValidatedLines: number;
+  /** Unique users with at least one run inside the window. */
+  activeUsers: Set<string>;
   byAgent: Record<string, AgentStats>;
 }
 
@@ -80,6 +84,7 @@ export class StoreService {
     agg.totalOutputTokens += run.outputTokens;
     agg.totalTokens += run.totalTokens;
     agg.totalCost += run.cost;
+    agg.activeUsers.add(run.userId);
     if (run.generatedLines !== undefined) agg.totalGeneratedLines += run.generatedLines;
 
     bucket.calls++;
@@ -145,6 +150,7 @@ export class StoreService {
         totalAccepted: agg.totalAccepted,
         totalRejected: agg.totalRejected,
         totalValidatedLines: agg.totalValidatedLines,
+        activeUsers: agg.activeUsers,
         byAgent: agg.byAgent,
       };
     }
@@ -215,6 +221,7 @@ export class StoreService {
         totalAccepted: 0,
         totalRejected: 0,
         totalValidatedLines: 0,
+        activeUsers: new Set(),
         days: {},
         byAgent: {},
       };
@@ -282,6 +289,7 @@ function applyValidationToAgentStats(
 
 function sumDaysToWindowStats(days: DayBucket[]): WindowStats {
   const byAgent: Record<string, AgentStats> = {};
+  const activeUsers = new Set<string>();
   let totalCalls = 0;
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
@@ -300,6 +308,7 @@ function sumDaysToWindowStats(days: DayBucket[]): WindowStats {
     totalTokens += bucket.totalTokens;
     totalCost += bucket.cost;
     totalGeneratedLines += bucket.generatedLines;
+    for (const u of bucket.activeUsers) activeUsers.add(u);
 
     for (const [agentId, s] of Object.entries(bucket.byAgent)) {
       if (!byAgent[agentId]) byAgent[agentId] = emptyAgentStats();
@@ -331,6 +340,7 @@ function sumDaysToWindowStats(days: DayBucket[]): WindowStats {
     totalAccepted,
     totalRejected,
     totalValidatedLines,
+    activeUsers,
     byAgent,
   };
 }

@@ -30,3 +30,19 @@ export function dateRangeFromPreset(preset: DayPreset): DateRange {
   const start = new Date(end.getTime() - (days - 1) * 86_400_000);
   return { from: toDateKey(start), to: toDateKey(end), preset };
 }
+
+/**
+ * Enumerate every day in [from, to] inclusive as YYYY-MM-DD strings.
+ * Used to pad sparse time-series data with explicit zero-days so chart lines
+ * span the full selected window rather than skipping inactive days.
+ */
+export function enumerateDays(from: string, to: string): string[] {
+  const fromMs = Date.parse(`${from}T00:00:00Z`);
+  const toMs = Date.parse(`${to}T00:00:00Z`);
+  if (Number.isNaN(fromMs) || Number.isNaN(toMs) || toMs < fromMs) return [];
+  const result: string[] = [];
+  for (let ts = fromMs; ts <= toMs; ts += 86_400_000) {
+    result.push(new Date(ts).toISOString().slice(0, 10));
+  }
+  return result;
+}

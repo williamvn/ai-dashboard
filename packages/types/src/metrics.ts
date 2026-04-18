@@ -1,5 +1,9 @@
 export interface UsageMetrics {
   totalCalls: number;
+  /** Total users in the organization (engagement denominator). */
+  totalUsers: number;
+  /** Unique users with at least one run inside the window. */
+  totalActiveUsers: number;
   /** date string (YYYY-MM-DD) → run count */
   callsPerDay: Record<string, number>;
   /** date string (YYYY-MM-DD) → unique active user count */
@@ -8,6 +12,8 @@ export interface UsageMetrics {
   adoptionPercentage: number;
   /** agentId → total run count */
   callsPerAgent: Record<string, number>;
+  /** date string (YYYY-MM-DD) → agentId → run count */
+  callsPerAgentPerDay: Record<string, Record<string, number>>;
 }
 
 export interface TokenMetrics {

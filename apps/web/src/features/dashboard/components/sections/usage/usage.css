@@ -1,0 +1,116 @@
+/* ─── Usage section layout ──────────────────────────────────────────────── */
+.usage-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ─── KPIs ─────────────────────────────────────────────────────────────── */
+.usage-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 1200px) {
+  .usage-kpis { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .usage-kpis { grid-template-columns: repeat(2, 1fr); }
+}
+
+.usage-kpi {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 84px;
+}
+
+.usage-kpi-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.usage-kpi-value {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.usage-kpi-hint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* ─── Chart rows ──────────────────────────────────────────────────────── */
+.usage-chart-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .usage-chart-row { grid-template-columns: 1fr; }
+}
+
+/* ─── Chart card ──────────────────────────────────────────────────────── */
+.chart-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chart-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chart-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.chart-card-subtitle {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.chart-card-body {
+  width: 100%;
+}
+
+.chart-card-empty {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+/* ─── Recharts overrides ───────────────────────────────────────────────── */
+.recharts-default-tooltip {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+}
+
+.recharts-legend-item-text {
+  color: var(--text-secondary) !important;
+}

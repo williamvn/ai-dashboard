@@ -20,9 +20,10 @@ export class AnalyticsService {
 
     const days = this.store.getOrgDays(organizationId, from, to);
     const totalUsers = this.store.getUserCountForOrg(organizationId);
+    const windowDays = countWindowDays(from, to) ?? days.length;
 
     return {
-      usage: computeUsage(stats, days, totalUsers),
+      usage: computeUsage(stats, days, totalUsers, windowDays),
       tokens: computeTokens(stats, days),
       cost: computeCost(stats, days),
       validation: computeValidation(stats),
@@ -31,18 +32,45 @@ export class AnalyticsService {
   }
 }
 
-function computeUsage(stats: WindowStats, days: DayBucket[], totalUsers: number): UsageMetrics {
+/**
+ * Inclusive count of days between two YYYY-MM-DD dates. Returns undefined if the
+ * range is open-ended; the caller falls back to the number of days with activity.
+ */
+function countWindowDays(from?: string, to?: string): number | undefined {
+  if (!from || !to) return undefined;
+  const fromMs = Date.parse(`${from}T00:00:00Z`);
+  const toMs = Date.parse(`${to}T00:00:00Z`);
+  if (Number.isNaN(fromMs) || Number.isNaN(toMs) || toMs < fromMs) return undefined;
+  return Math.floor((toMs - fromMs) / 86_400_000) + 1;
+}
+
+function computeUsage(
+  stats: WindowStats,
+  days: DayBucket[],
+  totalUsers: number,
+  windowDays: number,
+): UsageMetrics {
   const callsPerDay: Record<string, number> = {};
   const dauPerDay: Record<string, number> = {};
+  const callsPerAgentPerDay: Record<string, Record<string, number>> = {};
   let totalDau = 0;
 
   for (const bucket of days) {
     callsPerDay[bucket.date] = bucket.calls;
     dauPerDay[bucket.date] = bucket.activeUsers.size;
     totalDau += bucket.activeUsers.size;
+
+    const perAgent: Record<string, number> = {};
+    for (const [agentId, s] of Object.entries(bucket.byAgent)) {
+      if (s.calls > 0) perAgent[agentId] = s.calls;
+    }
+    callsPerAgentPerDay[bucket.date] = perAgent;
   }
 
-  const avgDau = days.length > 0 ? totalDau / days.length : 0;
+  // Adoption averages DAU over the full window span — a 30-day window with one
+  // busy day shouldn't report the same adoption as 30 uniformly busy days.
+  const avgDau = windowDays > 0 ? totalDau / windowDays : 0;
+
   const callsPerAgent: Record<string, number> = {};
   for (const [agentId, s] of Object.entries(stats.byAgent)) {
     callsPerAgent[agentId] = s.calls;
@@ -50,10 +78,13 @@ function computeUsage(stats: WindowStats, days: DayBucket[], totalUsers: number)
 
   return {
     totalCalls: stats.totalCalls,
+    totalUsers,
+    totalActiveUsers: stats.activeUsers.size,
     callsPerDay,
     dauPerDay,
     adoptionPercentage: totalUsers > 0 ? Math.min((avgDau / totalUsers) * 100, 100) : 0,
     callsPerAgent,
+    callsPerAgentPerDay,
   };
 }
 
@@ -129,7 +160,7 @@ function computeValidation(stats: WindowStats): ValidationMetrics {
 
 function emptyDashboard(): DashboardMetrics {
   return {
-    usage: { totalCalls: 0, callsPerDay: {}, dauPerDay: {}, adoptionPercentage: 0, callsPerAgent: {} },
+    usage: { totalCalls: 0, totalUsers: 0, totalActiveUsers: 0, callsPerDay: {}, dauPerDay: {}, adoptionPercentage: 0, callsPerAgent: {}, callsPerAgentPerDay: {} },
     tokens: { totalInputTokens: 0, totalOutputTokens: 0, totalTokens: 0, tokensPerRun: 0, tokensPerAcceptedRun: 0, tokensByAgent: {}, tokensPerDay: {} },
     cost: { totalCost: 0, costPerRun: 0, costPerAcceptedRun: 0, costByAgent: {}, costPerDay: {} },
     validation: { validationRate: 0, acceptanceRate: 0, totalValidated: 0, totalAccepted: 0, totalRejected: 0, totalGeneratedLines: 0, totalValidatedLines: 0, acceptanceRateByAgent: {} },

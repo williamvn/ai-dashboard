@@ -4,7 +4,7 @@ import type { EngineerOverride } from '../types';
 import { RangeSlider } from '@/components/ui/RangeSlider';
 import { Slider } from '@/components/ui/Slider';
 
-const CALLS_ABS_MIN = 1;
+const CALLS_ABS_MIN = 0;
 const CALLS_ABS_MAX = 20;
 
 interface EngineerRowProps {

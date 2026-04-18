@@ -11,7 +11,7 @@ const DAY_PRESETS = [
   { label: '90 days', value: 90 },
 ];
 
-const CALLS_ABS_MIN = 1;
+const CALLS_ABS_MIN = 0;
 const CALLS_ABS_MAX = 20;
 
 interface GlobalDefaultsPanelProps {

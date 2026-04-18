@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useOrgUsers } from '../hooks/useOrgUsers';
-import { useAgents } from '../hooks/useAgents';
+import { useAgents } from '@/hooks/useAgents';
 import { useOrganizations } from '@/features/organizations/hooks/useOrganizations';
 import { useSimulation } from '../hooks/useSimulation';
 import { useSimulationConfig } from '../hooks/useSimulationConfig';

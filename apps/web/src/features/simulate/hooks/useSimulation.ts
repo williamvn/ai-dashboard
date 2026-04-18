@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBlocker, type Blocker } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   runSimulation,
   type SimulationConfig,
@@ -18,6 +19,7 @@ export interface UseSimulation {
 }
 
 export function useSimulation(): UseSimulation {
+  const queryClient = useQueryClient();
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [result, setResult] = useState<SimulationResult | null>(null);
@@ -61,6 +63,9 @@ export function useSimulation(): UseSimulation {
     } finally {
       setRunning(false);
       abortRef.current = null;
+      // Either a completed or aborted run may have written new runs/validations
+      // to the backend. Drop any cached dashboard metrics so the next view fetches fresh.
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
     }
   }
 
