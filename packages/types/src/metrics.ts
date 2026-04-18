@@ -1,14 +1,4 @@
-/**
- * Aggregated metric shapes returned by the analytics layer.
- * All aggregations are computed from in-memory AgentRun and UserAction arrays.
- */
-
-// ---------------------------------------------------------------------------
-// Usage & Adoption
-// ---------------------------------------------------------------------------
-
 export interface UsageMetrics {
-  /** Total number of agent runs in the window */
   totalCalls: number;
   /** date string (YYYY-MM-DD) → run count */
   callsPerDay: Record<string, number>;
@@ -20,43 +10,50 @@ export interface UsageMetrics {
   callsPerAgent: Record<string, number>;
 }
 
-// ---------------------------------------------------------------------------
-// Cost
-// ---------------------------------------------------------------------------
+export interface TokenMetrics {
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
+  /** Average total tokens per run */
+  tokensPerRun: number;
+  /** Average total tokens per accepted run */
+  tokensPerAcceptedRun: number;
+  /** agentId → total tokens */
+  tokensByAgent: Record<string, number>;
+  /** date string (YYYY-MM-DD) → total tokens */
+  tokensPerDay: Record<string, number>;
+}
 
 export interface CostMetrics {
   totalCost: number;
-  /** agentId → total cost (USD) */
-  costPerAgent: Record<string, number>;
   /** Average cost per run (USD) */
-  costPerCall: number;
+  costPerRun: number;
+  /** Average cost per accepted run (USD) */
+  costPerAcceptedRun: number;
+  /** agentId → total cost (USD) */
+  costByAgent: Record<string, number>;
   /** date string (YYYY-MM-DD) → total cost (USD) */
   costPerDay: Record<string, number>;
 }
 
-// ---------------------------------------------------------------------------
-// Output & Value
-// ---------------------------------------------------------------------------
-
-export interface OutputMetrics {
+export interface ValidationMetrics {
+  /** % of runs that received a ValidationEvent (0–1) */
+  validationRate: number;
+  /** % of validated runs where accepted = true (0–1) */
+  acceptanceRate: number;
+  totalValidated: number;
   totalAccepted: number;
   totalRejected: number;
-  /** Fraction of runs that were accepted (0–1) */
-  acceptanceRate: number;
   totalGeneratedLines: number;
-  totalAcceptedLines: number;
+  totalValidatedLines: number;
   /** agentId → acceptance rate (0–1) */
-  acceptanceRatePerAgent: Record<string, number>;
+  acceptanceRateByAgent: Record<string, number>;
 }
-
-// ---------------------------------------------------------------------------
-// Combined dashboard response
-// ---------------------------------------------------------------------------
 
 export interface DashboardMetrics {
   usage: UsageMetrics;
+  tokens: TokenMetrics;
   cost: CostMetrics;
-  output: OutputMetrics;
-  /** ISO timestamp of when these metrics were computed */
+  validation: ValidationMetrics;
   computedAt: string;
 }

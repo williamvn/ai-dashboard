@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { CostMetrics, DashboardMetrics, OutputMetrics, UsageMetrics } from '@repo/types';
+import type { CostMetrics, DashboardMetrics, TokenMetrics, UsageMetrics, ValidationMetrics } from '@repo/types';
 import type { DayBucket, WindowStats } from '../store/store.service';
 import { StoreService } from '../store/store.service';
 import type { AnalyticsQueryDto } from './dto/analytics-query.dto';
@@ -23,8 +23,9 @@ export class AnalyticsService {
 
     return {
       usage: computeUsage(stats, days, totalUsers),
+      tokens: computeTokens(stats, days),
       cost: computeCost(stats, days),
-      output: computeOutput(stats),
+      validation: computeValidation(stats),
       computedAt: new Date().toISOString(),
     };
   }
@@ -56,49 +57,82 @@ function computeUsage(stats: WindowStats, days: DayBucket[], totalUsers: number)
   };
 }
 
+function computeTokens(stats: WindowStats, days: DayBucket[]): TokenMetrics {
+  const tokensPerDay: Record<string, number> = {};
+  for (const bucket of days) {
+    tokensPerDay[bucket.date] = bucket.totalTokens;
+  }
+
+  const tokensByAgent: Record<string, number> = {};
+  for (const [agentId, s] of Object.entries(stats.byAgent)) {
+    tokensByAgent[agentId] = s.totalTokens;
+  }
+
+  const tokensPerAcceptedRun = stats.totalAccepted > 0
+    ? Object.values(stats.byAgent).reduce((sum, s) => sum + s.totalTokens * (s.calls > 0 ? s.accepted / s.calls : 0), 0) / stats.totalAccepted
+    : 0;
+
+  return {
+    totalInputTokens: stats.totalInputTokens,
+    totalOutputTokens: stats.totalOutputTokens,
+    totalTokens: stats.totalTokens,
+    tokensPerRun: stats.totalCalls > 0 ? stats.totalTokens / stats.totalCalls : 0,
+    tokensPerAcceptedRun,
+    tokensByAgent,
+    tokensPerDay,
+  };
+}
+
 function computeCost(stats: WindowStats, days: DayBucket[]): CostMetrics {
   const costPerDay: Record<string, number> = {};
   for (const bucket of days) {
     costPerDay[bucket.date] = bucket.cost;
   }
 
-  const costPerAgent: Record<string, number> = {};
+  const costByAgent: Record<string, number> = {};
   for (const [agentId, s] of Object.entries(stats.byAgent)) {
-    costPerAgent[agentId] = s.cost;
+    costByAgent[agentId] = s.cost;
   }
+
+  const costPerAcceptedRun = stats.totalAccepted > 0
+    ? Object.values(stats.byAgent).reduce((sum, s) => sum + s.cost * (s.calls > 0 ? s.accepted / s.calls : 0), 0) / stats.totalAccepted
+    : 0;
 
   return {
     totalCost: stats.totalCost,
-    costPerAgent,
-    costPerCall: stats.totalCalls > 0 ? stats.totalCost / stats.totalCalls : 0,
+    costPerRun: stats.totalCalls > 0 ? stats.totalCost / stats.totalCalls : 0,
+    costPerAcceptedRun,
+    costByAgent,
     costPerDay,
   };
 }
 
-function computeOutput(stats: WindowStats): OutputMetrics {
-  const reviewed = stats.totalAccepted + stats.totalRejected;
-  const acceptanceRatePerAgent: Record<string, number> = {};
+function computeValidation(stats: WindowStats): ValidationMetrics {
+  const acceptanceRateByAgent: Record<string, number> = {};
 
   for (const [agentId, s] of Object.entries(stats.byAgent)) {
-    const total = s.accepted + s.rejected;
-    acceptanceRatePerAgent[agentId] = total > 0 ? s.accepted / total : 0;
+    const validated = s.accepted + s.rejected;
+    acceptanceRateByAgent[agentId] = validated > 0 ? s.accepted / validated : 0;
   }
 
   return {
+    validationRate: stats.totalCalls > 0 ? stats.totalValidated / stats.totalCalls : 0,
+    acceptanceRate: stats.totalValidated > 0 ? stats.totalAccepted / stats.totalValidated : 0,
+    totalValidated: stats.totalValidated,
     totalAccepted: stats.totalAccepted,
     totalRejected: stats.totalRejected,
-    acceptanceRate: reviewed > 0 ? stats.totalAccepted / reviewed : 0,
     totalGeneratedLines: stats.totalGeneratedLines,
-    totalAcceptedLines: stats.totalAcceptedLines,
-    acceptanceRatePerAgent,
+    totalValidatedLines: stats.totalValidatedLines,
+    acceptanceRateByAgent,
   };
 }
 
 function emptyDashboard(): DashboardMetrics {
   return {
     usage: { totalCalls: 0, callsPerDay: {}, dauPerDay: {}, adoptionPercentage: 0, callsPerAgent: {} },
-    cost: { totalCost: 0, costPerAgent: {}, costPerCall: 0, costPerDay: {} },
-    output: { totalAccepted: 0, totalRejected: 0, acceptanceRate: 0, totalGeneratedLines: 0, totalAcceptedLines: 0, acceptanceRatePerAgent: {} },
+    tokens: { totalInputTokens: 0, totalOutputTokens: 0, totalTokens: 0, tokensPerRun: 0, tokensPerAcceptedRun: 0, tokensByAgent: {}, tokensPerDay: {} },
+    cost: { totalCost: 0, costPerRun: 0, costPerAcceptedRun: 0, costByAgent: {}, costPerDay: {} },
+    validation: { validationRate: 0, acceptanceRate: 0, totalValidated: 0, totalAccepted: 0, totalRejected: 0, totalGeneratedLines: 0, totalValidatedLines: 0, acceptanceRateByAgent: {} },
     computedAt: new Date().toISOString(),
   };
 }

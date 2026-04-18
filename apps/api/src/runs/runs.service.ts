@@ -1,15 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import type { AgentRun, RunAgentResponse, AcceptOutputResponse, TaskLevel, UserAction } from '@repo/types';
+import type { AgentRun, RunAgentResponse, ValidateOutputResponse, ValidationEvent, TaskLevel } from '@repo/types';
 import { randomUUID } from 'crypto';
 import { AgentsService } from '../agents/agents.service';
 import { StoreService } from '../store/store.service';
 import type { RunAgentDto } from './dto/run-agent.dto';
-import type { AcceptOutputDto } from './dto/accept-output.dto';
+import type { ValidateOutputDto } from './dto/validate-output.dto';
 
 const LINES_RANGE: Record<TaskLevel, [min: number, max: number]> = {
-  easy: [10, 60],
-  medium: [60, 200],
-  hard: [200, 500],
+  easy:   [10,  60],
+  medium: [60,  200],
+  hard:   [200, 500],
 };
 
 @Injectable()
@@ -26,9 +26,13 @@ export class RunsService {
     const user = this.store.findUserById(dto.userId);
     if (!user) throw new NotFoundException(`User "${dto.userId}" not found`);
 
-    const cost = agent.prices[dto.taskLevel];
+    const profile = agent.tokenProfile[dto.taskLevel];
+    const inputTokens = sampleInt(profile.inputMin, profile.inputMax);
+    const outputTokens = sampleInt(profile.outputMin, profile.outputMax);
+    const totalTokens = inputTokens + outputTokens;
+    const cost = inputTokens * agent.inputTokenPrice + outputTokens * agent.outputTokenPrice;
     const latency = agent.latency[dto.taskLevel];
-    const generatedLines = agent.generatesLines ? sampleLines(dto.taskLevel) : undefined;
+    const generatedLines = agent.generatesLines ? sampleInt(...LINES_RANGE[dto.taskLevel]) : undefined;
     const timestamp = dto.timestamp ?? Date.now();
 
     const run: AgentRun = {
@@ -37,6 +41,9 @@ export class RunsService {
       userId: dto.userId,
       agentId: dto.agentId,
       taskLevel: dto.taskLevel,
+      inputTokens,
+      outputTokens,
+      totalTokens,
       cost,
       latency,
       generatedLines,
@@ -45,40 +52,45 @@ export class RunsService {
 
     this.store.recordRun(run);
 
-    return { runId: run.id, cost, latency, generatedLines };
+    return { runId: run.id, inputTokens, outputTokens, totalTokens, cost, latency, generatedLines };
   }
 
-  acceptOutput(dto: AcceptOutputDto): AcceptOutputResponse {
+  validateOutput(dto: ValidateOutputDto): ValidateOutputResponse {
     const run = this.store.findRunById(dto.runId);
     if (!run) throw new NotFoundException(`Run "${dto.runId}" not found`);
 
-    if (this.store.actions.has(dto.runId)) {
-      throw new BadRequestException(`Run "${dto.runId}" has already been reviewed`);
+    if (this.store.validations.has(dto.runId)) {
+      throw new BadRequestException(`Run "${dto.runId}" has already been validated`);
     }
 
-    if (
-      dto.acceptedLines !== undefined &&
-      run.generatedLines !== undefined &&
-      dto.acceptedLines > run.generatedLines
-    ) {
-      throw new BadRequestException(
-        `acceptedLines (${dto.acceptedLines}) cannot exceed generatedLines (${run.generatedLines})`,
-      );
+    if (dto.validatedLines !== undefined) {
+      if (!dto.accepted) {
+        throw new BadRequestException('validatedLines is only valid when accepted is true');
+      }
+      if (run.generatedLines === undefined) {
+        throw new BadRequestException(
+          `validatedLines is not valid for runs that do not generate lines`,
+        );
+      }
+      if (dto.validatedLines > run.generatedLines) {
+        throw new BadRequestException(
+          `validatedLines (${dto.validatedLines}) cannot exceed generatedLines (${run.generatedLines})`,
+        );
+      }
     }
 
-    const action: UserAction = {
+    const event: ValidationEvent = {
       runId: dto.runId,
       accepted: dto.accepted,
-      acceptedLines: dto.acceptedLines,
+      validatedLines: dto.validatedLines,
     };
 
-    this.store.recordAction(run, action);
+    this.store.recordValidation(run, event);
 
     return { success: true };
   }
 }
 
-function sampleLines(level: TaskLevel): number {
-  const [min, max] = LINES_RANGE[level];
+function sampleInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }

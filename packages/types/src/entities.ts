@@ -13,11 +13,20 @@ export interface User {
   profilePicUrl: string;
 }
 
+export interface TokenRange {
+  inputMin: number;
+  inputMax: number;
+  outputMin: number;
+  outputMax: number;
+}
+
 export interface Agent {
   id: string;
   name: string;
   generatesLines: boolean;
-  prices: Record<TaskLevel, number>;
+  inputTokenPrice: number;
+  outputTokenPrice: number;
+  tokenProfile: Record<TaskLevel, TokenRange>;
   latency: Record<TaskLevel, number>;
 }
 
@@ -27,14 +36,17 @@ export interface AgentRun {
   userId: string;
   agentId: string;
   taskLevel: TaskLevel;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
   cost: number;
   latency: number;
   generatedLines?: number;
   timestamp: number;
 }
 
-export interface UserAction {
+export interface ValidationEvent {
   runId: string;
   accepted: boolean;
-  acceptedLines?: number;
+  validatedLines?: number;
 }

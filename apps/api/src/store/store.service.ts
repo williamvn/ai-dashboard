@@ -1,18 +1,24 @@
 import { Injectable } from '@nestjs/common';
-import type { Agent, AgentRun, Organization, User, UserAction } from '@repo/types';
+import type { Agent, AgentRun, Organization, User, ValidationEvent } from '@repo/types';
 
 export interface AgentStats {
   calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
   cost: number;
   generatedLines: number;
   accepted: number;
   rejected: number;
-  acceptedLines: number;
+  validatedLines: number;
 }
 
 export interface DayBucket {
   date: string;
   calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
   cost: number;
   generatedLines: number;
   activeUsers: Set<string>;
@@ -22,22 +28,30 @@ export interface DayBucket {
 export interface OrgAggregate {
   organizationId: string;
   totalCalls: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
   totalCost: number;
   totalGeneratedLines: number;
+  totalValidated: number;
   totalAccepted: number;
   totalRejected: number;
-  totalAcceptedLines: number;
+  totalValidatedLines: number;
   days: Record<string, DayBucket>;
   byAgent: Record<string, AgentStats>;
 }
 
 export interface WindowStats {
   totalCalls: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
   totalCost: number;
   totalGeneratedLines: number;
+  totalValidated: number;
   totalAccepted: number;
   totalRejected: number;
-  totalAcceptedLines: number;
+  totalValidatedLines: number;
   byAgent: Record<string, AgentStats>;
 }
 
@@ -47,7 +61,7 @@ export class StoreService {
   readonly users: User[] = [];
   readonly agents: Agent[] = [];
   readonly runs: Map<string, AgentRun> = new Map();
-  readonly actions: Map<string, UserAction> = new Map();
+  readonly validations: Map<string, ValidationEvent> = new Map();
   readonly aggregates: Map<string, OrgAggregate> = new Map();
 
   // ---------------------------------------------------------------------------
@@ -62,10 +76,16 @@ export class StoreService {
     const bucket = this.getOrCreateDayBucket(agg, day);
 
     agg.totalCalls++;
+    agg.totalInputTokens += run.inputTokens;
+    agg.totalOutputTokens += run.outputTokens;
+    agg.totalTokens += run.totalTokens;
     agg.totalCost += run.cost;
     if (run.generatedLines !== undefined) agg.totalGeneratedLines += run.generatedLines;
 
     bucket.calls++;
+    bucket.inputTokens += run.inputTokens;
+    bucket.outputTokens += run.outputTokens;
+    bucket.totalTokens += run.totalTokens;
     bucket.cost += run.cost;
     bucket.activeUsers.add(run.userId);
     if (run.generatedLines !== undefined) bucket.generatedLines += run.generatedLines;
@@ -74,25 +94,26 @@ export class StoreService {
     incrementAgentStats(bucket.byAgent, run);
   }
 
-  recordAction(run: AgentRun, action: UserAction): void {
-    this.actions.set(run.id, action);
+  recordValidation(run: AgentRun, event: ValidationEvent): void {
+    this.validations.set(run.id, event);
 
     const agg = this.aggregates.get(run.organizationId);
     if (!agg) return;
 
-    const lines = action.acceptedLines ?? run.generatedLines ?? 0;
+    const lines = event.validatedLines ?? 0;
 
-    if (action.accepted) {
+    agg.totalValidated++;
+    if (event.accepted) {
       agg.totalAccepted++;
-      agg.totalAcceptedLines += lines;
+      agg.totalValidatedLines += lines;
     } else {
       agg.totalRejected++;
     }
 
-    applyActionToAgentStats(agg.byAgent, run.agentId, action, lines);
+    applyValidationToAgentStats(agg.byAgent, run.agentId, event, lines);
 
     const bucket = agg.days[toDateKey(run.timestamp)];
-    if (bucket) applyActionToAgentStats(bucket.byAgent, run.agentId, action, lines);
+    if (bucket) applyValidationToAgentStats(bucket.byAgent, run.agentId, event, lines);
   }
 
   // ---------------------------------------------------------------------------
@@ -115,11 +136,15 @@ export class StoreService {
     if (!from && !to) {
       return {
         totalCalls: agg.totalCalls,
+        totalInputTokens: agg.totalInputTokens,
+        totalOutputTokens: agg.totalOutputTokens,
+        totalTokens: agg.totalTokens,
         totalCost: agg.totalCost,
         totalGeneratedLines: agg.totalGeneratedLines,
+        totalValidated: agg.totalValidated,
         totalAccepted: agg.totalAccepted,
         totalRejected: agg.totalRejected,
-        totalAcceptedLines: agg.totalAcceptedLines,
+        totalValidatedLines: agg.totalValidatedLines,
         byAgent: agg.byAgent,
       };
     }
@@ -137,7 +162,7 @@ export class StoreService {
     for (const [id, run] of this.runs) {
       if (run.organizationId === orgId) {
         this.runs.delete(id);
-        this.actions.delete(id);
+        this.validations.delete(id);
         runsRemoved++;
       }
     }
@@ -181,11 +206,15 @@ export class StoreService {
       agg = {
         organizationId,
         totalCalls: 0,
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalTokens: 0,
         totalCost: 0,
         totalGeneratedLines: 0,
+        totalValidated: 0,
         totalAccepted: 0,
         totalRejected: 0,
-        totalAcceptedLines: 0,
+        totalValidatedLines: 0,
         days: {},
         byAgent: {},
       };
@@ -199,6 +228,9 @@ export class StoreService {
       agg.days[date] = {
         date,
         calls: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
         cost: 0,
         generatedLines: 0,
         activeUsers: new Set(),
@@ -218,28 +250,31 @@ function toDateKey(timestampMs: number): string {
 }
 
 function emptyAgentStats(): AgentStats {
-  return { calls: 0, cost: 0, generatedLines: 0, accepted: 0, rejected: 0, acceptedLines: 0 };
+  return { calls: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0, cost: 0, generatedLines: 0, accepted: 0, rejected: 0, validatedLines: 0 };
 }
 
 function incrementAgentStats(map: Record<string, AgentStats>, run: AgentRun): void {
   if (!map[run.agentId]) map[run.agentId] = emptyAgentStats();
   const s = map[run.agentId];
   s.calls++;
+  s.inputTokens += run.inputTokens;
+  s.outputTokens += run.outputTokens;
+  s.totalTokens += run.totalTokens;
   s.cost += run.cost;
   if (run.generatedLines !== undefined) s.generatedLines += run.generatedLines;
 }
 
-function applyActionToAgentStats(
+function applyValidationToAgentStats(
   map: Record<string, AgentStats>,
   agentId: string,
-  action: UserAction,
+  event: ValidationEvent,
   lines: number,
 ): void {
   if (!map[agentId]) map[agentId] = emptyAgentStats();
   const s = map[agentId];
-  if (action.accepted) {
+  if (event.accepted) {
     s.accepted++;
-    s.acceptedLines += lines;
+    s.validatedLines += lines;
   } else {
     s.rejected++;
   }
@@ -248,14 +283,21 @@ function applyActionToAgentStats(
 function sumDaysToWindowStats(days: DayBucket[]): WindowStats {
   const byAgent: Record<string, AgentStats> = {};
   let totalCalls = 0;
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let totalTokens = 0;
   let totalCost = 0;
   let totalGeneratedLines = 0;
+  let totalValidated = 0;
   let totalAccepted = 0;
   let totalRejected = 0;
-  let totalAcceptedLines = 0;
+  let totalValidatedLines = 0;
 
   for (const bucket of days) {
     totalCalls += bucket.calls;
+    totalInputTokens += bucket.inputTokens;
+    totalOutputTokens += bucket.outputTokens;
+    totalTokens += bucket.totalTokens;
     totalCost += bucket.cost;
     totalGeneratedLines += bucket.generatedLines;
 
@@ -263,16 +305,32 @@ function sumDaysToWindowStats(days: DayBucket[]): WindowStats {
       if (!byAgent[agentId]) byAgent[agentId] = emptyAgentStats();
       const t = byAgent[agentId];
       t.calls += s.calls;
+      t.inputTokens += s.inputTokens;
+      t.outputTokens += s.outputTokens;
+      t.totalTokens += s.totalTokens;
       t.cost += s.cost;
       t.generatedLines += s.generatedLines;
       t.accepted += s.accepted;
       t.rejected += s.rejected;
-      t.acceptedLines += s.acceptedLines;
+      t.validatedLines += s.validatedLines;
+      totalValidated += s.accepted + s.rejected;
       totalAccepted += s.accepted;
       totalRejected += s.rejected;
-      totalAcceptedLines += s.acceptedLines;
+      totalValidatedLines += s.validatedLines;
     }
   }
 
-  return { totalCalls, totalCost, totalGeneratedLines, totalAccepted, totalRejected, totalAcceptedLines, byAgent };
+  return {
+    totalCalls,
+    totalInputTokens,
+    totalOutputTokens,
+    totalTokens,
+    totalCost,
+    totalGeneratedLines,
+    totalValidated,
+    totalAccepted,
+    totalRejected,
+    totalValidatedLines,
+    byAgent,
+  };
 }

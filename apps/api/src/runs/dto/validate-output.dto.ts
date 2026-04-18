@@ -1,6 +1,6 @@
 import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
 
-export class AcceptOutputDto {
+export class ValidateOutputDto {
   @IsString()
   @IsNotEmpty()
   runId: string;
@@ -10,6 +10,6 @@ export class AcceptOutputDto {
 
   @IsOptional()
   @IsInt()
-  @Min(0)
-  acceptedLines?: number;
+  @Min(1)
+  validatedLines?: number;
 }
