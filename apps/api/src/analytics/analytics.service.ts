@@ -7,10 +7,16 @@ import type {
   TokenMetrics,
   UsageMetrics,
   UserCostRanking,
+  UserUsageRanking,
 } from '@repo/types';
 import type { DayBucket, WindowStats } from '../store/store.service';
 import { LATENCY_BUCKET_COUNT, LATENCY_BUCKET_MS, StoreService } from '../store/store.service';
 import type { AnalyticsQueryDto } from './dto/analytics-query.dto';
+import {
+  DEFAULT_USER_RANKING_LIMIT,
+  RANK_BY_TOTAL,
+  type UserRankingQueryDto,
+} from './dto/user-ranking-query.dto';
 
 /**
  * Minimum samples before p95 is considered stable. Below this, nearest-rank
@@ -29,6 +35,13 @@ export class AnalyticsService {
     const { stats, days, windowDays } = this.resolveWindow(query);
     const totalUsers = this.store.getUserCountForOrg(query.organizationId);
     return buildUsage(stats, days, totalUsers, windowDays);
+  }
+
+  getUserRanking(query: UserRankingQueryDto): UserUsageRanking[] {
+    const { stats } = this.resolveWindow(query);
+    const rankBy = query.rankBy && query.rankBy !== RANK_BY_TOTAL ? query.rankBy : RANK_BY_TOTAL;
+    const limit = query.limit ?? DEFAULT_USER_RANKING_LIMIT;
+    return buildUsageRanking(stats, rankBy, limit, (id) => this.store.findUserById(id));
   }
 
   getCostAnalytics(query: AnalyticsQueryDto): CostAnalytics {
@@ -110,6 +123,36 @@ function buildUsage(
     callsPerAgentPerDay,
     windowDays,
   };
+}
+
+/**
+ * Ranks users by a chosen criterion and returns the top `limit`. The sort key
+ * is either total calls across agents (`rankBy='total'`) or calls to a specific
+ * agent (`rankBy=<agentId>`).
+ */
+function buildUsageRanking(
+  stats: WindowStats,
+  rankBy: string,
+  limit: number,
+  resolveUser: (userId: string) => { name: string; profilePicUrl: string } | undefined,
+): UserUsageRanking[] {
+  const isTotal = rankBy === RANK_BY_TOTAL;
+
+  return Object.entries(stats.byUser)
+    .map(([userId, s]) => {
+      const user = resolveUser(userId);
+      const calls = isTotal ? s.calls : (s.callsByAgent[rankBy] ?? 0);
+      return {
+        userId,
+        userName: user?.name ?? userId,
+        userProfilePicUrl: user?.profilePicUrl ?? '',
+        calls,
+        callsByAgent: s.callsByAgent,
+      };
+    })
+    .filter((r) => r.calls > 0)
+    .sort((a, b) => b.calls - a.calls)
+    .slice(0, limit);
 }
 
 function buildCallsPerAgent(stats: WindowStats): Record<string, number> {

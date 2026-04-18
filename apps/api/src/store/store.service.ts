@@ -44,6 +44,7 @@ export interface UserStats {
   calls: number;
   totalTokens: number;
   cost: number;
+  callsByAgent: Record<string, number>;
 }
 
 export interface DayBucket {
@@ -263,7 +264,7 @@ function emptyAgentStats(): AgentStats {
 }
 
 function emptyUserStats(): UserStats {
-  return { calls: 0, totalTokens: 0, cost: 0 };
+  return { calls: 0, totalTokens: 0, cost: 0, callsByAgent: {} };
 }
 
 function incrementAgentStats(map: Record<string, AgentStats>, run: AgentRun): void {
@@ -288,6 +289,7 @@ function incrementUserStats(map: Record<string, UserStats>, run: AgentRun): void
   s.calls++;
   s.totalTokens += run.totalTokens;
   s.cost += run.cost;
+  s.callsByAgent[run.agentId] = (s.callsByAgent[run.agentId] ?? 0) + 1;
 }
 
 function applyValidationToAgentStats(
@@ -365,6 +367,9 @@ function sumDaysToWindowStats(days: DayBucket[]): WindowStats {
       t.calls += s.calls;
       t.totalTokens += s.totalTokens;
       t.cost += s.cost;
+      for (const [agentId, calls] of Object.entries(s.callsByAgent)) {
+        t.callsByAgent[agentId] = (t.callsByAgent[agentId] ?? 0) + calls;
+      }
     }
   }
 

@@ -63,3 +63,159 @@
 @media (max-width: 960px) {
   .usage-chart-row { grid-template-columns: 1fr; }
 }
+
+/* ─── User usage leaderboard ──────────────────────────────────────────── */
+.usage-table-filter {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 6px 28px 6px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%238a8f98' d='M5 7L1.5 3h7z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.usage-table-filter:hover {
+  border-color: var(--border-strong);
+}
+
+.usage-table-filter:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.usage-table {
+  display: flex;
+  flex-direction: column;
+  transition: opacity 0.15s;
+}
+
+.usage-table--refetching {
+  opacity: 0.55;
+}
+
+.usage-table-head,
+.usage-table-row {
+  display: grid;
+  grid-template-columns: 36px minmax(160px, 1.4fr) 80px minmax(200px, 3fr);
+  align-items: center;
+  gap: 16px;
+  padding: 10px 4px;
+}
+
+.usage-table-head {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border);
+}
+
+.usage-table-row {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.usage-table-row:hover {
+  background: var(--bg-elevated);
+}
+
+.usage-table-row:last-child {
+  border-bottom: none;
+}
+
+.usage-table-rank {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-table-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.usage-table-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg-elevated);
+}
+
+.usage-table-avatar--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.usage-table-user-name {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usage-table-calls {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.usage-table-bar {
+  display: block;
+}
+
+.usage-table-bar-track {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  min-width: 4px;
+}
+
+.usage-table-bar-seg {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  transition: filter 0.15s;
+}
+
+.usage-table-bar-seg:hover {
+  filter: brightness(1.15);
+}
+
+.usage-table-loading,
+.usage-table-error {
+  padding: 32px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.usage-table-error {
+  color: var(--danger-light);
+}

@@ -24,6 +24,21 @@ export interface UsageMetrics {
   windowDays: number;
 }
 
+/**
+ * Row in the paginated user ranking endpoint (`GET /analytics/users`). The
+ * `calls` field is whatever the ranking sorted by (total across agents when
+ * `rankBy=total`, or the specific agent's calls when `rankBy=<agentId>`).
+ * `callsByAgent` is always returned so the client can render composition bars
+ * without a second round trip.
+ */
+export interface UserUsageRanking {
+  userId: string;
+  userName: string;
+  userProfilePicUrl: string;
+  calls: number;
+  callsByAgent: Record<string, number>;
+}
+
 export interface TokenMetrics {
   totalInputTokens: number;
   totalOutputTokens: number;

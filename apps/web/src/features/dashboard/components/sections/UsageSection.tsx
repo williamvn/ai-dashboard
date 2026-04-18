@@ -6,10 +6,10 @@ import { enumerateDays } from '../../lib/dateRange';
 import { useUsageMetrics } from '../../hooks/useDashboardMetrics';
 import { SectionState } from './SectionState';
 import { UsageKpis } from './usage/UsageKpis';
-import { CallsOverTimeChart } from './usage/CallsOverTimeChart';
 import { DauOverTimeChart } from './usage/DauOverTimeChart';
 import { CallsPerAgentPerDayChart } from './usage/CallsPerAgentPerDayChart';
 import { CallsByAgentChart } from './usage/CallsByAgentChart';
+import { UserUsageTable } from './usage/UserUsageTable';
 import './usage/usage.css';
 
 export function UsageSection() {
@@ -31,18 +31,19 @@ export function UsageSection() {
     <div className="dashboard-section usage-section">
       <UsageKpis usage={usage} windowDays={usage.windowDays} />
 
+      <CallsPerAgentPerDayChart days={days} data={usage.callsPerAgentPerDay} agents={agents} />
+
       <div className="usage-chart-row">
-        <CallsOverTimeChart days={days} callsPerDay={usage.callsPerDay} />
         <DauOverTimeChart days={days} dauPerDay={usage.dauPerDay} totalUsers={usage.totalUsers} />
+        <CallsByAgentChart callsPerAgent={usage.callsPerAgent} agents={agents} />
       </div>
 
-      <CallsPerAgentPerDayChart
-        days={days}
-        data={usage.callsPerAgentPerDay}
+      <UserUsageTable
+        organizationId={organizationId}
+        from={dateRange.from}
+        to={dateRange.to}
         agents={agents}
       />
-
-      <CallsByAgentChart callsPerAgent={usage.callsPerAgent} agents={agents} />
     </div>
   );
 }

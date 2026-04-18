@@ -1,6 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
-import type { AnalyticsQuery } from '@repo/types';
-import { fetchCostAnalytics, fetchUsageMetrics } from '../services/analytics.service';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import type { AnalyticsQuery, UserRankingQuery } from '@repo/types';
+import {
+  fetchCostAnalytics,
+  fetchUsageMetrics,
+  fetchUserRanking,
+} from '../services/analytics.service';
 
 const STALE_MS = 30 * 1000;
 
@@ -17,5 +21,25 @@ export function useCostAnalytics(query: AnalyticsQuery) {
     queryKey: ['analytics', 'cost', query.organizationId, query.from, query.to] as const,
     queryFn: () => fetchCostAnalytics(query),
     staleTime: STALE_MS,
+  });
+}
+
+export function useUserRanking(query: UserRankingQuery) {
+  return useQuery({
+    queryKey: [
+      'analytics',
+      'usage',
+      'user-ranking',
+      query.organizationId,
+      query.from,
+      query.to,
+      query.rankBy ?? 'total',
+      query.limit ?? null,
+    ] as const,
+    queryFn: () => fetchUserRanking(query),
+    staleTime: STALE_MS,
+    // Keep the prior rows rendered while a new `rankBy` resolves — otherwise the
+    // card flashes through its empty/loading state on every agent switch.
+    placeholderData: keepPreviousData,
   });
 }

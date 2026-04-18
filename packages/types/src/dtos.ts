@@ -32,3 +32,10 @@ export interface AnalyticsQuery {
   from?: string;
   to?: string;
 }
+
+export interface UserRankingQuery extends AnalyticsQuery {
+  /** Either 'total' (default) or a specific agent id. */
+  rankBy?: string;
+  /** Default 20, max 100. */
+  limit?: number;
+}
