@@ -14,7 +14,7 @@ import {
   chartTooltipProps,
   formatAxisDate,
 } from '../../../lib/chartTheme';
-import { ChartCard } from './ChartCard';
+import { ChartCard } from '../ChartCard';
 
 interface CallsOverTimeChartProps {
   days: string[];

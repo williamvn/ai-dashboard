@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import './ChartCard.css';
 
 interface ChartCardProps {
   title: string;

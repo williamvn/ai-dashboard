@@ -16,7 +16,7 @@ import {
   chartGridProps,
   chartTooltipProps,
 } from '../../../lib/chartTheme';
-import { ChartCard } from './ChartCard';
+import { ChartCard } from '../ChartCard';
 
 interface CallsByAgentChartProps {
   callsPerAgent: Record<string, number>;
@@ -38,7 +38,7 @@ export function CallsByAgentChart({ callsPerAgent, agents }: CallsByAgentChartPr
   }, [agents, callsPerAgent]);
 
   return (
-    <ChartCard title="Most Used Agents" empty={rows.length === 0}>
+    <ChartCard title="Total Calls per Agent" empty={rows.length === 0}>
       <ResponsiveContainer width="100%" height={260}>
         <BarChart data={rows} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
           <CartesianGrid {...chartGridProps} />
