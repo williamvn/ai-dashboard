@@ -16,6 +16,7 @@ export interface UseSimulation {
   blocker: Blocker;
   handleRun: (config: SimulationConfig) => Promise<void>;
   handleStop: () => void;
+  clearResult: () => void;
 }
 
 export function useSimulation(): UseSimulation {
@@ -73,5 +74,21 @@ export function useSimulation(): UseSimulation {
     abortRef.current?.abort();
   }
 
-  return { running, progress, progressPct, result, error, blocker, handleRun, handleStop };
+  function clearResult() {
+    setResult(null);
+    setError(null);
+    setProgress({ done: 0, total: 0 });
+  }
+
+  return {
+    running,
+    progress,
+    progressPct,
+    result,
+    error,
+    blocker,
+    handleRun,
+    handleStop,
+    clearResult,
+  };
 }

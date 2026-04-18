@@ -7,8 +7,42 @@
 }
 
 .simulate-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   padding: 28px 28px 20px;
   border-bottom: 1px solid var(--border);
+}
+
+.clear-data-btn {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.clear-data-btn:hover:not(:disabled) {
+  background: var(--danger-bg);
+  color: var(--danger-light);
+  border-color: var(--danger-border);
+}
+
+.clear-data-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sim-blocker-error {
+  font-size: 12px;
+  color: var(--danger-light);
+  margin-bottom: 16px;
 }
 
 .simulate-title {

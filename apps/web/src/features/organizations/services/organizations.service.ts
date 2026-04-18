@@ -9,3 +9,7 @@ export async function fetchOrgUsers(orgId: string): Promise<User[]> {
   return api.get<User[]>(`/organizations/${orgId}/users`);
 }
 
+export async function clearOrgData(orgId: string): Promise<{ runsRemoved: number }> {
+  return api.delete<{ runsRemoved: number }>(`/organizations/${orgId}/data`);
+}
+

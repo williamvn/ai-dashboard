@@ -11,6 +11,7 @@ import { EngineerList } from './EngineerList';
 import { SimulateRunBar } from './SimulateRunBar';
 import { SimulateResults } from './SimulateResults';
 import { SimulateBlockerModal } from './SimulateBlockerModal';
+import { ClearDataButton } from './ClearDataButton';
 import '../simulate.css';
 
 interface SimulatePageProps {
@@ -53,6 +54,7 @@ export function SimulatePage({ orgId }: SimulatePageProps) {
             Generate synthetic AI agent activity for <strong>{org?.name ?? '…'}</strong>
           </p>
         </div>
+        <ClearDataButton orgId={orgId} disabled={sim.running} onCleared={sim.clearResult} />
       </div>
 
       {isLoading ? (
