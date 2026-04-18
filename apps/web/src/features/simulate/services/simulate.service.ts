@@ -1,6 +1,28 @@
 import { api } from '@/services/api';
-import type { RunAgentResponse, TaskLevel } from '@repo/types';
-import type { EngineerSimConfig } from '../types';
+import type { RunAgentResponse, TaskLevel, User } from '@repo/types';
+import type { EngineerOverride, EngineerSimConfig, Globals } from '../types';
+
+/**
+ * Merge per-engineer overrides onto global defaults to produce the configs the simulator runs.
+ * Pure — belongs in the service, not inside a component, so it stays unit-testable.
+ */
+export function buildEngineerConfigs(
+  selectedUsers: User[],
+  overrides: Map<string, EngineerOverride>,
+  globals: Globals,
+): EngineerSimConfig[] {
+  return selectedUsers.map((u) => {
+    const ov = overrides.get(u.id);
+    return {
+      userId: u.id,
+      callsPerDayMin: ov?.callsPerDayMin ?? globals.callsMin,
+      callsPerDayMax: ov?.callsPerDayMax ?? globals.callsMax,
+      validationRate: (ov?.validationRate ?? globals.validation) / 100,
+      acceptanceRate: (ov?.acceptanceRate ?? globals.acceptance) / 100,
+      agentIds: ov?.agentIds ?? globals.agentIds,
+    };
+  });
+}
 
 export interface SimulationConfig {
   engineers: EngineerSimConfig[];

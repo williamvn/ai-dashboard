@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { User, Agent } from '@repo/types';
 import type { EngineerOverride } from '../types';
 import { RangeSlider } from '@/components/ui/RangeSlider';
@@ -18,17 +19,17 @@ interface EngineerRowProps {
   globalAgentIds: string[];
   agents: Agent[];
   disabled?: boolean;
-  onToggleSelect: () => void;
-  onToggleExpand: () => void;
-  onOverrideChange: (next: EngineerOverride) => void;
-  onResetOverride: () => void;
+  onToggleSelect: (userId: string) => void;
+  onToggleExpand: (userId: string) => void;
+  onOverrideChange: (userId: string, next: EngineerOverride) => void;
+  onResetOverride: (userId: string) => void;
 }
 
 function formatCallsRange(lo: number, hi: number): string {
   return lo === hi ? `${lo}` : `${lo}–${hi}`;
 }
 
-export function EngineerRow({
+function EngineerRowBase({
   user,
   selected,
   expanded,
@@ -54,41 +55,39 @@ export function EngineerRow({
   const hasNoAgents = effectiveAgentIds.size === 0;
 
   function setCallsRange(lo: number, hi: number) {
-    onOverrideChange({ ...override, callsPerDayMin: lo, callsPerDayMax: hi });
+    onOverrideChange(user.id, { ...override, callsPerDayMin: lo, callsPerDayMax: hi });
   }
 
   function setValidationRate(v: number) {
-    onOverrideChange({ ...override, validationRate: v });
+    onOverrideChange(user.id, { ...override, validationRate: v });
   }
 
   function setAcceptanceRate(v: number) {
-    onOverrideChange({ ...override, acceptanceRate: v });
+    onOverrideChange(user.id, { ...override, acceptanceRate: v });
   }
 
   function toggleAgent(agentId: string) {
     const next = new Set(effectiveAgentIds);
     if (next.has(agentId)) next.delete(agentId);
     else next.add(agentId);
-    onOverrideChange({ ...override, agentIds: Array.from(next) });
+    onOverrideChange(user.id, { ...override, agentIds: Array.from(next) });
   }
 
   return (
     <div
       className={`engineer-row${selected ? ' selected' : ''}${expanded ? ' expanded' : ''}${disabled ? ' locked' : ''}`}
     >
-      {/* Main row — clicking anywhere expands; checkbox is isolated */}
       <div
         className="engineer-row-main"
-        onClick={disabled ? undefined : onToggleExpand}
+        onClick={disabled ? undefined : () => onToggleExpand(user.id)}
         role="button"
         tabIndex={disabled ? -1 : 0}
-        onKeyDown={(e) => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) onToggleExpand(); }}
+        onKeyDown={(e) => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) onToggleExpand(user.id); }}
         aria-expanded={expanded}
       >
-        {/* Checkbox select — stops propagation so it doesn't also expand */}
         <button
           className="engineer-checkbox"
-          onClick={(e) => { e.stopPropagation(); if (!disabled) onToggleSelect(); }}
+          onClick={(e) => { e.stopPropagation(); if (!disabled) onToggleSelect(user.id); }}
           aria-label={selected ? 'Deselect engineer' : 'Select engineer'}
           aria-pressed={selected}
           disabled={disabled}
@@ -102,13 +101,10 @@ export function EngineerRow({
           </span>
         </button>
 
-        {/* Avatar */}
         <img className="engineer-avatar" src={user.profilePicUrl} alt={user.name} />
 
-        {/* Name + badges */}
         <span className="engineer-name">{user.name}</span>
 
-        {/* Effective values (always visible) */}
         <span className="engineer-stat" title="Calls per day (range)">
           {formatCallsRange(effectiveCallsMin, effectiveCallsMax)}<span className="engineer-stat-unit">/day</span>
         </span>
@@ -139,10 +135,8 @@ export function EngineerRow({
         </span>
       </div>
 
-      {/* Expanded detail */}
       {expanded && !disabled && (
         <div className="engineer-row-detail">
-          {/* Calls per day (range) */}
           <div className="engineer-override-row">
             <span className="engineer-override-label">Calls / day</span>
             <RangeSlider
@@ -159,7 +153,6 @@ export function EngineerRow({
             </span>
           </div>
 
-          {/* Validation rate */}
           <div className="engineer-override-row">
             <span className="engineer-override-label">Validation</span>
             <Slider
@@ -173,7 +166,6 @@ export function EngineerRow({
             <span className="engineer-override-val">{effectiveValidation}%</span>
           </div>
 
-          {/* Acceptance rate */}
           <div className="engineer-override-row">
             <span className="engineer-override-label">Acceptance</span>
             <Slider
@@ -202,9 +194,8 @@ export function EngineerRow({
             </div>
           </div>
 
-          {/* Reset */}
           {isCustomised && (
-            <button className="engineer-reset-btn" onClick={onResetOverride}>
+            <button className="engineer-reset-btn" onClick={() => onResetOverride(user.id)}>
               Reset to defaults
             </button>
           )}
@@ -213,3 +204,5 @@ export function EngineerRow({
     </div>
   );
 }
+
+export const EngineerRow = memo(EngineerRowBase);
