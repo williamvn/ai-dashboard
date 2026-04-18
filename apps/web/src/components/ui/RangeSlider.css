@@ -1,0 +1,109 @@
+/* Dual-handle range slider */
+.range-slider {
+  position: relative;
+  width: 100%;
+  height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.range-slider-track {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--border-strong);
+  border-radius: 2px;
+}
+
+.range-slider-fill {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 4px;
+  background: var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.range-slider-input {
+  position: absolute;
+  width: 100%;
+  height: 24px;
+  background: transparent;
+  pointer-events: none;
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  outline: none;
+}
+
+.range-slider-input::-webkit-slider-runnable-track {
+  height: 4px;
+  background: transparent;
+  border: none;
+}
+
+.range-slider-input::-moz-range-track {
+  height: 4px;
+  background: transparent;
+  border: none;
+}
+
+.range-slider-input::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  pointer-events: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-surface);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  margin-top: -6px;
+  transition: transform 0.1s, background 0.1s;
+}
+
+.range-slider-input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-surface);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s, background 0.1s;
+}
+
+.range-slider-input::-webkit-slider-thumb:hover {
+  background: var(--accent-light);
+  transform: scale(1.1);
+}
+
+.range-slider-input::-moz-range-thumb:hover {
+  background: var(--accent-light);
+  transform: scale(1.1);
+}
+
+.range-slider-input-min { z-index: 2; }
+.range-slider-input-max { z-index: 3; }
+
+.range-slider.disabled {
+  opacity: 0.5;
+}
+
+.range-slider.disabled .range-slider-input {
+  pointer-events: none;
+}
+
+.range-slider.disabled .range-slider-input::-webkit-slider-thumb {
+  cursor: not-allowed;
+}
+
+.range-slider.disabled .range-slider-input::-moz-range-thumb {
+  cursor: not-allowed;
+}
