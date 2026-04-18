@@ -1,16 +1,49 @@
 import { Injectable } from '@nestjs/common';
 import type { Agent, AgentRun, Organization, User, ValidationEvent } from '@repo/types';
 
+/**
+ * Latency histogram: 100 buckets of 100ms covering 0–10s, with the last bucket
+ * acting as an overflow catch-all. Agent profiles peak at ~6.5s so this resolves
+ * p95 within 100ms — well inside the noise floor of a synthetic signal.
+ *
+ * Kept inside AgentStats so window p95 is an O(buckets) walk over the summed
+ * histogram instead of an O(N log N) sort of raw samples.
+ */
+export const LATENCY_BUCKET_MS = 100;
+export const LATENCY_BUCKET_COUNT = 100;
+
+export function newLatencyHistogram(): number[] {
+  return new Array(LATENCY_BUCKET_COUNT).fill(0);
+}
+
+export function latencyBucketIndex(ms: number): number {
+  const idx = Math.floor(ms / LATENCY_BUCKET_MS);
+  if (idx < 0) return 0;
+  if (idx >= LATENCY_BUCKET_COUNT) return LATENCY_BUCKET_COUNT - 1;
+  return idx;
+}
+
 export interface AgentStats {
   calls: number;
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
   cost: number;
+  inputCost: number;
+  outputCost: number;
   generatedLines: number;
   accepted: number;
   rejected: number;
   validatedLines: number;
+  latencySum: number;
+  latencyCount: number;
+  latencyHistogram: number[];
+}
+
+export interface UserStats {
+  calls: number;
+  totalTokens: number;
+  cost: number;
 }
 
 export interface DayBucket {
@@ -20,14 +53,19 @@ export interface DayBucket {
   outputTokens: number;
   totalTokens: number;
   cost: number;
+  inputCost: number;
+  outputCost: number;
   generatedLines: number;
   activeUsers: Set<string>;
   byAgent: Record<string, AgentStats>;
+  byUser: Record<string, UserStats>;
 }
 
 export interface OrgAggregate {
   organizationId: string;
   days: Record<string, DayBucket>;
+  allTimeTotalCost: number;
+  allTimeTotalRuns: number;
 }
 
 export interface WindowStats {
@@ -36,6 +74,8 @@ export interface WindowStats {
   totalOutputTokens: number;
   totalTokens: number;
   totalCost: number;
+  totalInputCost: number;
+  totalOutputCost: number;
   totalGeneratedLines: number;
   totalValidated: number;
   totalAccepted: number;
@@ -44,6 +84,10 @@ export interface WindowStats {
   /** Unique users with at least one run inside the window. */
   activeUsers: Set<string>;
   byAgent: Record<string, AgentStats>;
+  byUser: Record<string, UserStats>;
+  windowDays: number;
+  /** Carried through so the cost builder doesn't need a second store lookup. */
+  allTimeTotalCost: number;
 }
 
 @Injectable()
@@ -70,10 +114,16 @@ export class StoreService {
     bucket.outputTokens += run.outputTokens;
     bucket.totalTokens += run.totalTokens;
     bucket.cost += run.cost;
+    bucket.inputCost += run.inputCost;
+    bucket.outputCost += run.outputCost;
     bucket.activeUsers.add(run.userId);
     if (run.generatedLines !== undefined) bucket.generatedLines += run.generatedLines;
 
     incrementAgentStats(bucket.byAgent, run);
+    incrementUserStats(bucket.byUser, run);
+
+    agg.allTimeTotalCost += run.cost;
+    agg.allTimeTotalRuns++;
   }
 
   recordValidation(run: AgentRun, event: ValidationEvent): void {
@@ -100,8 +150,11 @@ export class StoreService {
   }
 
   getOrgWindowStats(orgId: string, from?: string, to?: string): WindowStats | undefined {
-    if (!this.aggregates.has(orgId)) return undefined;
-    return sumDaysToWindowStats(this.getOrgDays(orgId, from, to));
+    const agg = this.aggregates.get(orgId);
+    if (!agg) return undefined;
+    const stats = sumDaysToWindowStats(this.getOrgDays(orgId, from, to));
+    stats.allTimeTotalCost = agg.allTimeTotalCost;
+    return stats;
   }
 
   // ---------------------------------------------------------------------------
@@ -155,7 +208,7 @@ export class StoreService {
   private getOrCreateAggregate(organizationId: string): OrgAggregate {
     let agg = this.aggregates.get(organizationId);
     if (!agg) {
-      agg = { organizationId, days: {} };
+      agg = { organizationId, days: {}, allTimeTotalCost: 0, allTimeTotalRuns: 0 };
       this.aggregates.set(organizationId, agg);
     }
     return agg;
@@ -170,9 +223,12 @@ export class StoreService {
         outputTokens: 0,
         totalTokens: 0,
         cost: 0,
+        inputCost: 0,
+        outputCost: 0,
         generatedLines: 0,
         activeUsers: new Set(),
         byAgent: {},
+        byUser: {},
       };
     }
     return agg.days[date];
@@ -188,7 +244,26 @@ function toDateKey(timestampMs: number): string {
 }
 
 function emptyAgentStats(): AgentStats {
-  return { calls: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0, cost: 0, generatedLines: 0, accepted: 0, rejected: 0, validatedLines: 0 };
+  return {
+    calls: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+    cost: 0,
+    inputCost: 0,
+    outputCost: 0,
+    generatedLines: 0,
+    accepted: 0,
+    rejected: 0,
+    validatedLines: 0,
+    latencySum: 0,
+    latencyCount: 0,
+    latencyHistogram: newLatencyHistogram(),
+  };
+}
+
+function emptyUserStats(): UserStats {
+  return { calls: 0, totalTokens: 0, cost: 0 };
 }
 
 function incrementAgentStats(map: Record<string, AgentStats>, run: AgentRun): void {
@@ -199,7 +274,20 @@ function incrementAgentStats(map: Record<string, AgentStats>, run: AgentRun): vo
   s.outputTokens += run.outputTokens;
   s.totalTokens += run.totalTokens;
   s.cost += run.cost;
+  s.inputCost += run.inputCost;
+  s.outputCost += run.outputCost;
+  s.latencySum += run.latency;
+  s.latencyCount++;
+  s.latencyHistogram[latencyBucketIndex(run.latency)]++;
   if (run.generatedLines !== undefined) s.generatedLines += run.generatedLines;
+}
+
+function incrementUserStats(map: Record<string, UserStats>, run: AgentRun): void {
+  if (!map[run.userId]) map[run.userId] = emptyUserStats();
+  const s = map[run.userId];
+  s.calls++;
+  s.totalTokens += run.totalTokens;
+  s.cost += run.cost;
 }
 
 function applyValidationToAgentStats(
@@ -220,12 +308,15 @@ function applyValidationToAgentStats(
 
 function sumDaysToWindowStats(days: DayBucket[]): WindowStats {
   const byAgent: Record<string, AgentStats> = {};
+  const byUser: Record<string, UserStats> = {};
   const activeUsers = new Set<string>();
   let totalCalls = 0;
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let totalTokens = 0;
   let totalCost = 0;
+  let totalInputCost = 0;
+  let totalOutputCost = 0;
   let totalGeneratedLines = 0;
   let totalValidated = 0;
   let totalAccepted = 0;
@@ -238,6 +329,8 @@ function sumDaysToWindowStats(days: DayBucket[]): WindowStats {
     totalOutputTokens += bucket.outputTokens;
     totalTokens += bucket.totalTokens;
     totalCost += bucket.cost;
+    totalInputCost += bucket.inputCost;
+    totalOutputCost += bucket.outputCost;
     totalGeneratedLines += bucket.generatedLines;
     for (const u of bucket.activeUsers) activeUsers.add(u);
 
@@ -249,14 +342,29 @@ function sumDaysToWindowStats(days: DayBucket[]): WindowStats {
       t.outputTokens += s.outputTokens;
       t.totalTokens += s.totalTokens;
       t.cost += s.cost;
+      t.inputCost += s.inputCost;
+      t.outputCost += s.outputCost;
       t.generatedLines += s.generatedLines;
       t.accepted += s.accepted;
       t.rejected += s.rejected;
       t.validatedLines += s.validatedLines;
+      t.latencySum += s.latencySum;
+      t.latencyCount += s.latencyCount;
+      for (let i = 0; i < LATENCY_BUCKET_COUNT; i++) {
+        t.latencyHistogram[i] += s.latencyHistogram[i];
+      }
       totalValidated += s.accepted + s.rejected;
       totalAccepted += s.accepted;
       totalRejected += s.rejected;
       totalValidatedLines += s.validatedLines;
+    }
+
+    for (const [userId, s] of Object.entries(bucket.byUser)) {
+      if (!byUser[userId]) byUser[userId] = emptyUserStats();
+      const t = byUser[userId];
+      t.calls += s.calls;
+      t.totalTokens += s.totalTokens;
+      t.cost += s.cost;
     }
   }
 
@@ -266,6 +374,8 @@ function sumDaysToWindowStats(days: DayBucket[]): WindowStats {
     totalOutputTokens,
     totalTokens,
     totalCost,
+    totalInputCost,
+    totalOutputCost,
     totalGeneratedLines,
     totalValidated,
     totalAccepted,
@@ -273,5 +383,10 @@ function sumDaysToWindowStats(days: DayBucket[]): WindowStats {
     totalValidatedLines,
     activeUsers,
     byAgent,
+    byUser,
+    windowDays: days.length,
+    // Populated by getOrgWindowStats once the org aggregate is known. Defaults
+    // to 0 so callers that synthesize an empty WindowStats stay type-safe.
+    allTimeTotalCost: 0,
   };
 }

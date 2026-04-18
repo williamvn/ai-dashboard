@@ -39,7 +39,12 @@ export interface AgentRun {
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
+  /** Total cost — derived at write time; never recomputed later. */
   cost: number;
+  /** Spend attributable to input tokens — frozen at write time (prices may change). */
+  inputCost: number;
+  /** Spend attributable to output tokens — frozen at write time. */
+  outputCost: number;
   latency: number;
   generatedLines?: number;
   timestamp: number;

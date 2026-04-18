@@ -30,7 +30,9 @@ export class RunsService {
     const inputTokens = sampleInt(profile.inputMin, profile.inputMax);
     const outputTokens = sampleInt(profile.outputMin, profile.outputMax);
     const totalTokens = inputTokens + outputTokens;
-    const cost = inputTokens * agent.inputTokenPrice + outputTokens * agent.outputTokenPrice;
+    const inputCost = inputTokens * agent.inputTokenPrice;
+    const outputCost = outputTokens * agent.outputTokenPrice;
+    const cost = inputCost + outputCost;
     const latency = agent.latency[dto.taskLevel];
     const generatedLines = agent.generatesLines ? sampleInt(...LINES_RANGE[dto.taskLevel]) : undefined;
     const timestamp = dto.timestamp ?? Date.now();
@@ -45,6 +47,8 @@ export class RunsService {
       outputTokens,
       totalTokens,
       cost,
+      inputCost,
+      outputCost,
       latency,
       generatedLines,
       timestamp,

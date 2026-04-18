@@ -20,6 +20,8 @@ export interface UsageMetrics {
   callsPerAgent: Record<string, number>;
   /** date string (YYYY-MM-DD) → agentId → run count */
   callsPerAgentPerDay: Record<string, Record<string, number>>;
+  /** Days in the selected window (calendar-based when from+to set, else days-with-activity). */
+  windowDays: number;
 }
 
 export interface TokenMetrics {
@@ -28,24 +30,67 @@ export interface TokenMetrics {
   totalTokens: number;
   /** Average total tokens per run */
   tokensPerRun: number;
-  /** Average total tokens per accepted run */
-  tokensPerAcceptedRun: number;
   /** agentId → total tokens */
   tokensByAgent: Record<string, number>;
+  /** agentId → total input tokens — powers the input/output stacked breakdown */
+  inputTokensByAgent: Record<string, number>;
+  /** agentId → total output tokens */
+  outputTokensByAgent: Record<string, number>;
   /** date string (YYYY-MM-DD) → total tokens */
   tokensPerDay: Record<string, number>;
+  /** agentId → date (YYYY-MM-DD) → total tokens */
+  tokensByAgentPerDay: Record<string, Record<string, number>>;
+  /** agentId → average tokens per run */
+  avgTokensPerRunByAgent: Record<string, number>;
 }
 
 export interface CostMetrics {
   totalCost: number;
+  /** All-time cost for the organization, ignoring the selected date window. */
+  allTimeTotalCost: number;
   /** Average cost per run (USD) */
   costPerRun: number;
-  /** Average cost per accepted run (USD) */
-  costPerAcceptedRun: number;
+  /** Average cost per active user (USD) — ROI denominator. */
+  costPerActiveUser: number;
   /** agentId → total cost (USD) */
   costByAgent: Record<string, number>;
   /** date string (YYYY-MM-DD) → total cost (USD) */
   costPerDay: Record<string, number>;
+  /** agentId → date (YYYY-MM-DD) → cost (USD) */
+  costByAgentPerDay: Record<string, Record<string, number>>;
+  /** agentId → average cost per run (USD) */
+  avgCostPerRunByAgent: Record<string, number>;
+  /** agentId → average daily cost (USD) across the window */
+  avgDailyCostByAgent: Record<string, number>;
+  /** Total spend attributable to input tokens (USD) — frozen at write time. */
+  inputCost: number;
+  /** Total spend attributable to output tokens (USD) — frozen at write time. */
+  outputCost: number;
+  /** Unique active users in the window — informs costPerActiveUser and projections. */
+  totalActiveUsers: number;
+}
+
+export interface AgentLatencyStats {
+  avgMs: number;
+  /** null when fewer than LATENCY_P95_MIN_SAMPLES observed — insufficient data. */
+  p95Ms: number | null;
+  calls: number;
+}
+
+export interface LatencyMetrics {
+  avgMs: number;
+  p95Ms: number | null;
+  /** agentId → latency stats */
+  byAgent: Record<string, AgentLatencyStats>;
+}
+
+export interface UserCostRanking {
+  userId: string;
+  userName: string;
+  userProfilePicUrl: string;
+  totalCalls: number;
+  totalCost: number;
+  totalTokens: number;
 }
 
 export interface ValidationMetrics {
@@ -62,10 +107,19 @@ export interface ValidationMetrics {
   acceptanceRateByAgent: Record<string, number>;
 }
 
-export interface DashboardMetrics {
-  usage: UsageMetrics;
-  tokens: TokenMetrics;
+/**
+ * Composite response for the cost analytics endpoint. One aggregation pass on
+ * the backend projects out every slice related to spend — core cost metrics,
+ * tokens, latency, top spenders, and a call-count breakdown per agent so the
+ * cost-vs-usage correlation doesn't require a second request.
+ */
+export interface CostAnalytics {
+  /** Days in the selected window — lifted here so the inner DTOs don't repeat it. */
+  windowDays: number;
   cost: CostMetrics;
-  validation: ValidationMetrics;
-  computedAt: string;
+  tokens: TokenMetrics;
+  latency: LatencyMetrics;
+  userRanking: UserCostRanking[];
+  /** agentId → total calls in window — correlates spend against raw volume. */
+  callsPerAgent: Record<string, number>;
 }

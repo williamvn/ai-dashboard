@@ -1,50 +1,76 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { CostMetrics, DashboardMetrics, TokenMetrics, UsageMetrics, ValidationMetrics } from '@repo/types';
+import type {
+  AgentLatencyStats,
+  CostAnalytics,
+  CostMetrics,
+  LatencyMetrics,
+  TokenMetrics,
+  UsageMetrics,
+  UserCostRanking,
+} from '@repo/types';
 import type { DayBucket, WindowStats } from '../store/store.service';
-import { StoreService } from '../store/store.service';
+import { LATENCY_BUCKET_COUNT, LATENCY_BUCKET_MS, StoreService } from '../store/store.service';
 import type { AnalyticsQueryDto } from './dto/analytics-query.dto';
+
+/**
+ * Minimum samples before p95 is considered stable. Below this, nearest-rank
+ * collapses to near-max and misleads viewers — so we return null and let the
+ * UI render "–". Shared constant duplicated in the web client (keep in sync).
+ */
+const LATENCY_P95_MIN_SAMPLES = 20;
+
+const USER_RANKING_LIMIT = 20;
 
 @Injectable()
 export class AnalyticsService {
   constructor(private readonly store: StoreService) {}
 
-  getMetrics(query: AnalyticsQueryDto): DashboardMetrics {
-    const { organizationId, from, to } = query;
+  getUsage(query: AnalyticsQueryDto): UsageMetrics {
+    const { stats, days, windowDays } = this.resolveWindow(query);
+    const totalUsers = this.store.getUserCountForOrg(query.organizationId);
+    return buildUsage(stats, days, totalUsers, windowDays);
+  }
 
-    if (!this.store.orgExists(organizationId)) {
-      throw new NotFoundException(`Organization "${organizationId}" not found`);
-    }
-
-    const stats = this.store.getOrgWindowStats(organizationId, from, to);
-    if (!stats) return emptyDashboard();
-
-    const days = this.store.getOrgDays(organizationId, from, to);
-    const totalUsers = this.store.getUserCountForOrg(organizationId);
-    const windowDays = countWindowDays(from, to) ?? days.length;
+  getCostAnalytics(query: AnalyticsQueryDto): CostAnalytics {
+    const { stats, days, windowDays } = this.resolveWindow(query);
 
     return {
-      usage: computeUsage(stats, days, totalUsers, windowDays),
-      tokens: computeTokens(stats, days),
-      cost: computeCost(stats, days),
-      validation: computeValidation(stats),
-      computedAt: new Date().toISOString(),
+      windowDays,
+      cost: buildCost(stats, days, windowDays),
+      tokens: buildTokens(stats, days),
+      latency: buildLatency(stats),
+      userRanking: buildUserRanking(stats, (id) => this.store.findUserById(id)),
+      callsPerAgent: buildCallsPerAgent(stats),
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Internal
+  // ---------------------------------------------------------------------------
+
+  private resolveWindow(
+    query: AnalyticsQueryDto,
+  ): { stats: WindowStats; days: DayBucket[]; windowDays: number } {
+    if (!this.store.orgExists(query.organizationId)) {
+      throw new NotFoundException(`Organization "${query.organizationId}" not found`);
+    }
+
+    const { organizationId, from, to } = query;
+    const days = this.store.getOrgDays(organizationId, from, to);
+    const stats = this.store.getOrgWindowStats(organizationId, from, to) ?? emptyWindowStats();
+    const windowDays = countWindowDays(from, to) ?? days.length;
+    return { stats, days, windowDays };
   }
 }
 
-/**
- * Inclusive count of days between two YYYY-MM-DD dates. Returns undefined if the
- * range is open-ended; the caller falls back to the number of days with activity.
- */
-function countWindowDays(from?: string, to?: string): number | undefined {
-  if (!from || !to) return undefined;
-  const fromMs = Date.parse(`${from}T00:00:00Z`);
-  const toMs = Date.parse(`${to}T00:00:00Z`);
-  if (Number.isNaN(fromMs) || Number.isNaN(toMs) || toMs < fromMs) return undefined;
-  return Math.floor((toMs - fromMs) / 86_400_000) + 1;
-}
+// ---------------------------------------------------------------------------
+// Stateless builders — deterministic given their inputs. Most operate purely
+// over an already-resolved WindowStats; buildUserRanking additionally takes a
+// user resolver since user metadata (name, profile pic) isn't carried on the
+// aggregate itself.
+// ---------------------------------------------------------------------------
 
-function computeUsage(
+function buildUsage(
   stats: WindowStats,
   days: DayBucket[],
   totalUsers: number,
@@ -67,15 +93,8 @@ function computeUsage(
     callsPerAgentPerDay[bucket.date] = perAgent;
   }
 
-  // Adoption averages DAU over the full window span — a 30-day window with one
-  // busy day shouldn't report the same adoption as 30 uniformly busy days.
   const avgDau = windowDays > 0 ? totalDau / windowDays : 0;
   const totalActiveUsers = stats.activeUsers.size;
-
-  const callsPerAgent: Record<string, number> = {};
-  for (const [agentId, s] of Object.entries(stats.byAgent)) {
-    callsPerAgent[agentId] = s.calls;
-  }
 
   return {
     totalCalls: stats.totalCalls,
@@ -87,87 +106,188 @@ function computeUsage(
     callsPerDay,
     dauPerDay,
     adoptionPercentage: totalUsers > 0 ? Math.min((avgDau / totalUsers) * 100, 100) : 0,
-    callsPerAgent,
+    callsPerAgent: buildCallsPerAgent(stats),
     callsPerAgentPerDay,
+    windowDays,
   };
 }
 
-function computeTokens(stats: WindowStats, days: DayBucket[]): TokenMetrics {
+function buildCallsPerAgent(stats: WindowStats): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [agentId, s] of Object.entries(stats.byAgent)) {
+    out[agentId] = s.calls;
+  }
+  return out;
+}
+
+function buildTokens(stats: WindowStats, days: DayBucket[]): TokenMetrics {
   const tokensPerDay: Record<string, number> = {};
+  const tokensByAgentPerDay: Record<string, Record<string, number>> = {};
+
   for (const bucket of days) {
     tokensPerDay[bucket.date] = bucket.totalTokens;
+    for (const [agentId, s] of Object.entries(bucket.byAgent)) {
+      if (s.totalTokens === 0) continue;
+      if (!tokensByAgentPerDay[agentId]) tokensByAgentPerDay[agentId] = {};
+      tokensByAgentPerDay[agentId][bucket.date] = s.totalTokens;
+    }
   }
 
   const tokensByAgent: Record<string, number> = {};
+  const inputTokensByAgent: Record<string, number> = {};
+  const outputTokensByAgent: Record<string, number> = {};
+  const avgTokensPerRunByAgent: Record<string, number> = {};
   for (const [agentId, s] of Object.entries(stats.byAgent)) {
     tokensByAgent[agentId] = s.totalTokens;
+    inputTokensByAgent[agentId] = s.inputTokens;
+    outputTokensByAgent[agentId] = s.outputTokens;
+    avgTokensPerRunByAgent[agentId] = s.calls > 0 ? s.totalTokens / s.calls : 0;
   }
-
-  const tokensPerAcceptedRun = stats.totalAccepted > 0
-    ? Object.values(stats.byAgent).reduce((sum, s) => sum + s.totalTokens * (s.calls > 0 ? s.accepted / s.calls : 0), 0) / stats.totalAccepted
-    : 0;
 
   return {
     totalInputTokens: stats.totalInputTokens,
     totalOutputTokens: stats.totalOutputTokens,
     totalTokens: stats.totalTokens,
     tokensPerRun: stats.totalCalls > 0 ? stats.totalTokens / stats.totalCalls : 0,
-    tokensPerAcceptedRun,
     tokensByAgent,
+    inputTokensByAgent,
+    outputTokensByAgent,
     tokensPerDay,
+    tokensByAgentPerDay,
+    avgTokensPerRunByAgent,
   };
 }
 
-function computeCost(stats: WindowStats, days: DayBucket[]): CostMetrics {
+function buildCost(stats: WindowStats, days: DayBucket[], windowDays: number): CostMetrics {
   const costPerDay: Record<string, number> = {};
+  const costByAgentPerDay: Record<string, Record<string, number>> = {};
+
   for (const bucket of days) {
     costPerDay[bucket.date] = bucket.cost;
+    for (const [agentId, s] of Object.entries(bucket.byAgent)) {
+      if (s.cost === 0) continue;
+      if (!costByAgentPerDay[agentId]) costByAgentPerDay[agentId] = {};
+      costByAgentPerDay[agentId][bucket.date] = s.cost;
+    }
   }
 
   const costByAgent: Record<string, number> = {};
+  const avgCostPerRunByAgent: Record<string, number> = {};
+  const avgDailyCostByAgent: Record<string, number> = {};
+
+  const divisor = windowDays > 0 ? windowDays : 1;
   for (const [agentId, s] of Object.entries(stats.byAgent)) {
     costByAgent[agentId] = s.cost;
+    avgCostPerRunByAgent[agentId] = s.calls > 0 ? s.cost / s.calls : 0;
+    avgDailyCostByAgent[agentId] = s.cost / divisor;
   }
 
-  const costPerAcceptedRun = stats.totalAccepted > 0
-    ? Object.values(stats.byAgent).reduce((sum, s) => sum + s.cost * (s.calls > 0 ? s.accepted / s.calls : 0), 0) / stats.totalAccepted
-    : 0;
+  const totalActiveUsers = stats.activeUsers.size;
 
   return {
     totalCost: stats.totalCost,
+    allTimeTotalCost: stats.allTimeTotalCost,
     costPerRun: stats.totalCalls > 0 ? stats.totalCost / stats.totalCalls : 0,
-    costPerAcceptedRun,
+    costPerActiveUser: totalActiveUsers > 0 ? stats.totalCost / totalActiveUsers : 0,
     costByAgent,
     costPerDay,
+    costByAgentPerDay,
+    avgCostPerRunByAgent,
+    avgDailyCostByAgent,
+    inputCost: stats.totalInputCost,
+    outputCost: stats.totalOutputCost,
+    totalActiveUsers,
   };
 }
 
-function computeValidation(stats: WindowStats): ValidationMetrics {
-  const acceptanceRateByAgent: Record<string, number> = {};
+function buildLatency(stats: WindowStats): LatencyMetrics {
+  const byAgent: Record<string, AgentLatencyStats> = {};
+  let totalLatencySum = 0;
+  let totalSamples = 0;
+  const combinedHistogram = new Array(LATENCY_BUCKET_COUNT).fill(0);
 
   for (const [agentId, s] of Object.entries(stats.byAgent)) {
-    const validated = s.accepted + s.rejected;
-    acceptanceRateByAgent[agentId] = validated > 0 ? s.accepted / validated : 0;
+    byAgent[agentId] = {
+      avgMs: s.latencyCount > 0 ? s.latencySum / s.latencyCount : 0,
+      p95Ms: histogramP95(s.latencyHistogram, s.latencyCount),
+      calls: s.calls,
+    };
+    totalLatencySum += s.latencySum;
+    totalSamples += s.latencyCount;
+    for (let i = 0; i < LATENCY_BUCKET_COUNT; i++) {
+      combinedHistogram[i] += s.latencyHistogram[i];
+    }
   }
 
   return {
-    validationRate: stats.totalCalls > 0 ? stats.totalValidated / stats.totalCalls : 0,
-    acceptanceRate: stats.totalValidated > 0 ? stats.totalAccepted / stats.totalValidated : 0,
-    totalValidated: stats.totalValidated,
-    totalAccepted: stats.totalAccepted,
-    totalRejected: stats.totalRejected,
-    totalGeneratedLines: stats.totalGeneratedLines,
-    totalValidatedLines: stats.totalValidatedLines,
-    acceptanceRateByAgent,
+    avgMs: totalSamples > 0 ? totalLatencySum / totalSamples : 0,
+    p95Ms: histogramP95(combinedHistogram, totalSamples),
+    byAgent,
   };
 }
 
-function emptyDashboard(): DashboardMetrics {
+function buildUserRanking(
+  stats: WindowStats,
+  resolveUser: (userId: string) => { name: string; profilePicUrl: string } | undefined,
+): UserCostRanking[] {
+  return Object.entries(stats.byUser)
+    .map(([userId, s]) => {
+      const user = resolveUser(userId);
+      return {
+        userId,
+        userName: user?.name ?? userId,
+        userProfilePicUrl: user?.profilePicUrl ?? '',
+        totalCalls: s.calls,
+        totalCost: s.cost,
+        totalTokens: s.totalTokens,
+      };
+    })
+    .sort((a, b) => b.totalCost - a.totalCost)
+    .slice(0, USER_RANKING_LIMIT);
+}
+
+function countWindowDays(from?: string, to?: string): number | undefined {
+  if (!from || !to) return undefined;
+  const fromMs = Date.parse(`${from}T00:00:00Z`);
+  const toMs = Date.parse(`${to}T00:00:00Z`);
+  if (Number.isNaN(fromMs) || Number.isNaN(toMs) || toMs < fromMs) return undefined;
+  return Math.floor((toMs - fromMs) / 86_400_000) + 1;
+}
+
+/**
+ * Nearest-rank p95 over a fixed-bucket histogram. Returns null when the sample
+ * size is too small to be statistically stable — the UI renders "–" for that.
+ * Reports the bucket upper edge (worst-case latency within that bucket).
+ */
+function histogramP95(histogram: number[], count: number): number | null {
+  if (count < LATENCY_P95_MIN_SAMPLES) return null;
+  const target = Math.ceil(0.95 * count);
+  let cumulative = 0;
+  for (let i = 0; i < histogram.length; i++) {
+    cumulative += histogram[i];
+    if (cumulative >= target) return (i + 1) * LATENCY_BUCKET_MS;
+  }
+  return histogram.length * LATENCY_BUCKET_MS;
+}
+
+function emptyWindowStats(): WindowStats {
   return {
-    usage: { totalCalls: 0, totalUsers: 0, totalActiveUsers: 0, avgCallsPerDay: 0, avgDau: 0, callsPerActiveUser: 0, callsPerDay: {}, dauPerDay: {}, adoptionPercentage: 0, callsPerAgent: {}, callsPerAgentPerDay: {} },
-    tokens: { totalInputTokens: 0, totalOutputTokens: 0, totalTokens: 0, tokensPerRun: 0, tokensPerAcceptedRun: 0, tokensByAgent: {}, tokensPerDay: {} },
-    cost: { totalCost: 0, costPerRun: 0, costPerAcceptedRun: 0, costByAgent: {}, costPerDay: {} },
-    validation: { validationRate: 0, acceptanceRate: 0, totalValidated: 0, totalAccepted: 0, totalRejected: 0, totalGeneratedLines: 0, totalValidatedLines: 0, acceptanceRateByAgent: {} },
-    computedAt: new Date().toISOString(),
+    totalCalls: 0,
+    totalInputTokens: 0,
+    totalOutputTokens: 0,
+    totalTokens: 0,
+    totalCost: 0,
+    totalInputCost: 0,
+    totalOutputCost: 0,
+    totalGeneratedLines: 0,
+    totalValidated: 0,
+    totalAccepted: 0,
+    totalRejected: 0,
+    totalValidatedLines: 0,
+    activeUsers: new Set<string>(),
+    byAgent: {},
+    byUser: {},
+    windowDays: 0,
+    allTimeTotalCost: 0,
   };
 }
