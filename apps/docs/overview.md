@@ -9,7 +9,7 @@ The platform answers five core questions:
 1. How widely are AI agents adopted?
 2. How many tokens are consumed?
 3. What is the estimated cost?
-4. Which agents create validated value?
+4. Which agents produce accepted output?
 5. How is behaviour changing over time?
 
 ---
@@ -41,12 +41,6 @@ Examples:
 
 A single execution of an agent.
 
-### Validation
-
-A user quality signal indicating how useful the output was.
-
-Represented as a score from 0.0 to 1.0.
-
 ### Tokens
 
 Primary unit of AI consumption.
@@ -56,6 +50,16 @@ Includes:
 - input tokens
 - output tokens
 - total tokens
+
+Cost is derived from token counts multiplied by the agent's per-token prices.
+
+### Validation
+
+A user quality signal indicating whether the output was accepted.
+
+Binary: `accepted = true | false`.
+
+When the agent generated lines, the engineer may also report how many lines they actually kept (`validatedLines`).
 
 ---
 

@@ -28,11 +28,27 @@
   name: string;
   generatesLines: boolean;
 
-  inputTokenPrice: number;
-  outputTokenPrice: number;
+  inputTokenPrice: number;   // USD per input token
+  outputTokenPrice: number;  // USD per output token
 
+  tokenProfile: Record<TaskLevel, TokenRange>;
   latency: Record<TaskLevel, number>;
 }
+```
+
+Where `TokenRange` describes realistic token volumes for that agent at each task level:
+```ts
+{
+  inputMin: number;
+  inputMax: number;
+  outputMin: number;
+  outputMax: number;
+}
+```
+
+Cost is always derived — never stored as a flat rate:
+```
+cost = (inputTokens × inputTokenPrice) + (outputTokens × outputTokenPrice)
 ```
 
 ---
@@ -46,12 +62,13 @@ Represents one execution of an AI agent
   organizationId: string;
   userId: string;
   agentId: string;
+  taskLevel: TaskLevel;
 
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
 
-  cost: number;
+  cost: number;    // derived at write time from tokens × price
   latency: number;
 
   generatedLines?: number;
@@ -67,19 +84,24 @@ Represents user-reported usefulness of an output.
 ```ts
 {
   runId: string;
-  validationScore: number; // 0.0 to 1.0
-  validatedLines?: number;
+  accepted: boolean;
+  validatedLines?: number;  // how many generated lines the engineer actually kept
 }
 ```
+
+`validatedLines` is only meaningful when `accepted = true` and the run produced `generatedLines`.
 
 ---
 
 ## Derived Metrics
 
-- validationRate
-- averageValidationScore
+- validationRate             — % of runs that received a ValidationEvent
+- acceptanceRate             — % of validated runs where accepted = true
+- averageAcceptedLineRatio   — mean(validatedLines / generatedLines) across accepted runs
 - costPerRun
-- costPerValidatedRun
+- costPerAcceptedRun
 - tokensPerRun
-- tokensPerValidatedRun
+- tokensPerAcceptedRun
+- totalInputTokens
+- totalOutputTokens
 - spendByAgent

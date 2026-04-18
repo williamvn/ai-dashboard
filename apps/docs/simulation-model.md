@@ -52,45 +52,80 @@ Weighted distribution:
 
 Task level influences:
 
-- tokens
+- token volumes
 - latency
 - generated lines
 - validation tendency
 
 ---
 
+## Token Generation
+
+Each agent has a `tokenProfile` defining min/max input and output token ranges per task level.
+
+At simulation time, tokens are sampled randomly within those ranges:
+
+```
+inputTokens  = random(profile.inputMin,  profile.inputMax)
+outputTokens = random(profile.outputMin, profile.outputMax)
+totalTokens  = inputTokens + outputTokens
+```
+
+Cost is then derived from the agent's per-token prices:
+
+```
+cost = (inputTokens × agent.inputTokenPrice) + (outputTokens × agent.outputTokenPrice)
+```
+
+Harder tasks produce more tokens and therefore higher cost.
+
+---
+
 ## Agent Profiles
 
-Each agent has different behaviour.
+Each agent has different token behaviour reflecting its underlying task.
 
 Examples:
 
 ### Code Generator
 
-- high output tokens
+- high output tokens (generates code)
 - high generated lines
+- moderate input tokens
 
 ### Reviewer
 
-- high input tokens
-- low output tokens
+- high input tokens (reads code to review)
+- low output tokens (produces comments, not code)
+- no generated lines
 
 ### Debugger
 
-- medium tokens
-- medium latency
+- balanced input/output tokens
+- moderate latency
+- generates some lines (fixes)
 
 ---
 
-## Validation Scores
+## Validation
 
-Generated probabilistically based on:
+After each run, the engineer may validate the output.
 
-- agent type
-- task difficulty
-- randomness
+Validation is binary: the engineer either accepted or rejected the output.
 
-Produces realistic quality distributions.
+```
+accepted = Math.random() < engineerAcceptanceRate
+```
+
+If `accepted = true` and the agent generated lines, a `validatedLines` count is sampled:
+
+```
+validatedLines = random(1, run.generatedLines)
+```
+
+This models partial acceptance — the engineer may keep only some of the generated code.
+
+Acceptance rates vary per engineer and produce realistic quality distributions across the dashboard.
 
 ---
 
