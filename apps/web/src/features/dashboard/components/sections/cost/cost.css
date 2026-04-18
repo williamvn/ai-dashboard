@@ -1,0 +1,229 @@
+/* ─── Cost section layout ──────────────────────────────────────────────── */
+.cost-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ─── KPIs ─────────────────────────────────────────────────────────────── */
+.cost-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 1200px) {
+  .cost-kpis { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .cost-kpis { grid-template-columns: repeat(2, 1fr); }
+}
+
+.cost-kpi {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 84px;
+}
+
+.cost-kpi-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cost-kpi-value {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.cost-kpi-hint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* ─── Chart rows ──────────────────────────────────────────────────────── */
+.cost-chart-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .cost-chart-row { grid-template-columns: 1fr; }
+}
+
+.cost-chart-row-split {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .cost-chart-row-split { grid-template-columns: 1fr; }
+}
+
+/* ─── Cost split donut ────────────────────────────────────────────────── */
+.cost-split-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: center;
+}
+
+@media (max-width: 520px) {
+  .cost-split-layout { grid-template-columns: 1fr; }
+}
+
+.cost-split-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cost-split-legend-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.cost-split-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.cost-split-legend-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cost-split-legend-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cost-split-legend-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.cost-split-legend-pct {
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* ─── User ranking table ──────────────────────────────────────────────── */
+.user-ranking-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.user-ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.user-ranking-table th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+}
+
+.user-ranking-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+
+.user-ranking-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.user-ranking-table tbody tr:hover {
+  background: var(--bg-elevated);
+}
+
+.user-ranking-table .rank-col {
+  width: 40px;
+  color: var(--text-tertiary);
+  text-align: right;
+}
+
+.user-ranking-table .user-name {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.user-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+}
+
+.user-avatar-placeholder {
+  display: inline-block;
+  border: 1px solid var(--border);
+}
+
+.user-ranking-sort {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.user-ranking-sort:hover {
+  color: var(--text-secondary);
+}
+
+.user-ranking-sort.is-active {
+  color: var(--text-primary);
+}
+
+.user-ranking-sort-arrow {
+  font-size: 9px;
+  line-height: 1;
+}
