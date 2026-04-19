@@ -2,8 +2,9 @@
 .simulate-page {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
-  padding-bottom: 40px;
+  /* Bound to the viewport so the engineer list scrolls internally instead of
+     stretching the page — critical for the 100-engineer org. */
+  height: 100dvh;
 }
 
 .simulate-header {
@@ -571,6 +572,9 @@
   border: 1px solid transparent;
   transition: border-color 0.12s, opacity 0.2s;
   overflow: hidden;
+  /* Preserve natural row height inside the column-flex list so rows don't
+     squish to fit the bounded container — overflow-y: auto handles the rest. */
+  flex-shrink: 0;
 }
 
 .engineer-row.selected {
